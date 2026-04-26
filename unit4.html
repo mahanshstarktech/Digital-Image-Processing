@@ -1,0 +1,2025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIP Unit 4 — Image Restoration</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;600;700;800&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2130;
+    --border: #2a3045;
+    --accent: #4af0b4;
+    --accent2: #f0c44a;
+    --accent3: #f04a7a;
+    --accent4: #4a9af0;
+    --accent5: #c44af0;
+    --text: #e8eaf2;
+    --text-dim: #8892a8;
+    --mono: 'IBM Plex Mono', monospace;
+    --heading: 'Syne', sans-serif;
+    --body: 'Source Serif 4', serif;
+    --sidebar-width: 260px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  /* ── CHAPTER NAV ── */
+  .chapter-nav {
+    background: #080a10;
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .chapter-nav::-webkit-scrollbar { display: none; }
+  .chapter-nav-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 12px 10px 12px 0;
+    white-space: nowrap;
+    border-right: 1px solid var(--border);
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .ch-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 14px;
+    border-radius: 5px;
+    text-decoration: none;
+    color: var(--text-dim);
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .ch-link:hover { color: var(--text); background: var(--surface2); }
+  .ch-link.active { background: var(--surface2); color: var(--accent5); border: 1px solid var(--accent5); }
+
+  /* ── HEADER ── */
+  .hero {
+    background: linear-gradient(135deg, #0d0f14 0%, #1a0d20 50%, #0f0d1a 100%);
+    padding: 48px 32px 36px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 39px, #2a304522 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, #2a304522 40px);
+  }
+  .hero-inner { position: relative; max-width: 960px; margin: 0 auto; }
+  .hero-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent5);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .hero h1 {
+    font-family: var(--heading);
+    font-size: clamp(26px, 5vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    color: #fff;
+  }
+  .hero h1 span { color: var(--accent5); }
+  .hero-sub {
+    margin-top: 12px;
+    color: var(--text-dim);
+    font-size: 15px;
+    max-width: 580px;
+  }
+  .hero-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+  .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid;
+  }
+  .badge-green { color: var(--accent); border-color: var(--accent); background: #4af0b41a; }
+  .badge-yellow { color: var(--accent2); border-color: var(--accent2); background: #f0c44a1a; }
+  .badge-red { color: var(--accent3); border-color: var(--accent3); background: #f04a7a1a; }
+  .badge-blue { color: var(--accent4); border-color: var(--accent4); background: #4a9af01a; }
+  .badge-purple { color: var(--accent5); border-color: var(--accent5); background: #c44af01a; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; max-width: 1280px; margin: 0 auto; }
+
+  /* ── SIDEBAR TOGGLE BUTTON (mobile) ── */
+  .sidebar-toggle {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--accent5);
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    color: #fff;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(196,74,240,0.4);
+    transition: transform 0.2s;
+  }
+  .sidebar-toggle:hover { transform: scale(1.1); }
+  .sidebar-toggle.open { background: var(--accent3); }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 98;
+    backdrop-filter: blur(2px);
+  }
+  .sidebar-overlay.visible { display: block; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    padding: 28px 16px;
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 44px;
+    height: calc(100vh - 44px);
+    overflow-y: auto;
+    transition: transform 0.3s ease;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent5);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .sidebar-close {
+    display: none;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 2px 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--heading);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    transition: all 0.2s;
+    margin-bottom: 2px;
+    text-decoration: none;
+  }
+  .nav-item:hover, .nav-item.active { background: var(--surface2); color: var(--text); }
+  .nav-item.active { color: var(--accent5); border-left: 2px solid var(--accent5); }
+  .nav-imp {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--surface2);
+  }
+  .nav-imp.high { color: var(--accent3); }
+  .nav-imp.med { color: var(--accent2); }
+  .nav-imp.low { color: var(--accent); }
+
+  /* ── CONTENT ── */
+  .content {
+    flex: 1;
+    padding: 32px 36px;
+    max-width: calc(100% - var(--sidebar-width));
+    overflow-x: hidden;
+  }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 60px;
+    scroll-margin-top: 60px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .section-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent5);
+    background: #c44af015;
+    border: 1px solid #c44af040;
+    padding: 4px 8px;
+    border-radius: 4px;
+    min-width: 36px;
+    text-align: center;
+  }
+  .section-title {
+    font-family: var(--heading);
+    font-size: clamp(18px, 3vw, 22px);
+    font-weight: 800;
+    color: #fff;
+  }
+  .importance-pill {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  /* ── THEORY BLOCKS ── */
+  .theory-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 20px;
+  }
+  .theory-block h3 {
+    font-family: var(--heading);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent5);
+    margin-bottom: 12px;
+  }
+  .theory-block p { margin-bottom: 10px; color: var(--text); }
+  .theory-block p:last-child { margin-bottom: 0; }
+
+  /* ── FORMULA BLOCK ── */
+  .formula-box {
+    background: #0a0e18;
+    border: 1px solid var(--accent4);
+    border-left: 3px solid var(--accent5);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent4);
+    overflow-x: auto;
+  }
+  .formula-box .label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .formula-box .formula { color: #a8d4ff; }
+  .formula-box .note { color: var(--text-dim); font-size: 12px; margin-top: 8px; }
+
+  /* ── TIPS ── */
+  .tip-box {
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 14px 0;
+    display: flex;
+    gap: 12px;
+  }
+  .tip-box.trick { background: #f0c44a12; border: 1px solid #f0c44a40; }
+  .tip-box.validate { background: #4af0b412; border: 1px solid #4af0b440; }
+  .tip-box.connect { background: #4a9af012; border: 1px solid #4a9af040; }
+  .tip-box.warning { background: #f04a7a12; border: 1px solid #f04a7a40; }
+  .tip-box.purple { background: #c44af012; border: 1px solid #c44af040; }
+  .tip-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+  .tip-content { flex: 1; }
+  .tip-title {
+    font-family: var(--heading);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .tip-box.trick .tip-title { color: var(--accent2); }
+  .tip-box.validate .tip-title { color: var(--accent); }
+  .tip-box.connect .tip-title { color: var(--accent4); }
+  .tip-box.warning .tip-title { color: var(--accent3); }
+  .tip-box.purple .tip-title { color: var(--accent5); }
+  .tip-content p { font-size: 14px; color: var(--text); margin: 0; }
+
+  /* ── EXAMPLE BOX ── */
+  .example-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin: 14px 0;
+  }
+  .example-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* ── PYQ BLOCK ── */
+  .pyq-section {
+    background: #07090f;
+    border: 1px solid #c44af030;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-top: 24px;
+  }
+  .pyq-header {
+    font-family: var(--heading);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent5);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pyq-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .pyq-q {
+    font-family: var(--heading);
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .pyq-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  .pyq-answer { font-size: 14px; line-height: 1.8; }
+  .pyq-toggle {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent5);
+    margin-top: 10px;
+    transition: all 0.2s;
+  }
+  .pyq-toggle:hover { background: var(--accent5); color: #fff; }
+  .answer-content { display: none; margin-top: 14px; }
+  .answer-content.open { display: block; }
+
+  /* ── TABLE ── */
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+    display: block;
+    overflow-x: auto;
+  }
+  .comp-table th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: left;
+    font-family: var(--heading);
+    font-weight: 700;
+    color: var(--accent5);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .comp-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .comp-table tr:last-child td { border-bottom: none; }
+  .comp-table tr:hover td { background: var(--surface2); }
+
+  /* ── NOISE TABLE ── */
+  .noise-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin: 16px 0;
+  }
+  .noise-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .noise-card h4 {
+    font-family: var(--heading);
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .noise-card .nc-g { color: var(--accent); }
+  .noise-card .nc-r { color: var(--accent3); }
+  .noise-card .nc-b { color: var(--accent4); }
+  .noise-card .nc-e { color: var(--accent2); }
+  .noise-card .nc-u { color: var(--accent5); }
+  .noise-card .nc-s { color: #ff8c42; }
+
+  /* ── STEPS ── */
+  .steps { margin: 14px 0; }
+  .step-item {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+  .step-num {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 50%;
+    background: var(--accent5);
+    color: #fff;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-text { font-size: 15px; padding-top: 4px; }
+
+  /* ── IMPORTANCE BAR ── */
+  .imp-bar-wrap { margin-bottom: 8px; }
+  .imp-bar-label { font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .imp-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .imp-bar-fill { height: 100%; border-radius: 3px; }
+  .imp-high .imp-bar-fill { background: var(--accent3); }
+  .imp-med .imp-bar-fill { background: var(--accent2); }
+  .imp-low .imp-bar-fill { background: var(--accent5); }
+
+  /* ── DIAGRAM ── */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    text-align: center;
+    overflow-x: auto;
+  }
+  .diagram-cap {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  code {
+    font-family: var(--mono);
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: var(--accent4);
+  }
+  pre {
+    background: #070a10;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    margin: 12px 0;
+    line-height: 1.6;
+  }
+
+  ul, ol { padding-left: 20px; margin: 10px 0; }
+  li { margin-bottom: 6px; font-size: 15px; }
+  .highlight { color: var(--accent5); font-weight: 600; }
+  .hl-green { color: var(--accent); }
+  .hl-yellow { color: var(--accent2); }
+  .hl-red { color: var(--accent3); }
+  .hl-blue { color: var(--accent4); }
+
+  h4 {
+    font-family: var(--heading);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 16px 0 8px;
+  }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* ── MOBILE ── */
+  @media (max-width: 768px) {
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      z-index: 99;
+      background: var(--bg);
+      transform: translateX(-100%);
+      border-right: 1px solid var(--border);
+    }
+    .sidebar.open {
+      transform: translateX(0);
+      box-shadow: 4px 0 30px rgba(0,0,0,0.8);
+    }
+    .sidebar-close { display: block; }
+    .sidebar-toggle { display: flex; }
+    .content { max-width: 100%; padding: 20px 16px; }
+    .hero { padding: 32px 20px 28px; }
+    .chapter-nav { padding: 0 12px; }
+    .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .importance-pill { margin-left: 0; }
+    .theory-block { padding: 16px; }
+    .pyq-section { padding: 14px; }
+    .noise-grid { grid-template-columns: 1fr; }
+  }
+  @media (min-width: 769px) {
+    .sidebar-toggle { display: none !important; }
+    .sidebar-overlay { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Chapter Navigation -->
+<nav class="chapter-nav">
+  <span class="chapter-nav-label">DIP · RTU</span>
+  <a class="ch-link active" href="unit4.html">🔧 Unit 4: Restoration</a>
+  <a class="ch-link" href="unit5.html">📦 Unit 5: Compression</a>
+  <a class="ch-link" href="unit6.html">🔍 Unit 6: Segmentation</a>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-tag">📚 B.Tech VI Sem · RTU Exam Prep · Digital Image Processing</div>
+    <h1>Unit 4: Image<br><span>Restoration</span></h1>
+    <p class="hero-sub">Complete exam-ready guide — degradation model, all noise PDFs, filter formulas, inverse & Wiener filtering, homomorphic filtering, and all RTU PYQ solutions 2022–2025.</p>
+    <div class="hero-badges">
+      <span class="badge badge-red">🔥 High Priority</span>
+      <span class="badge badge-yellow">RTU PYQs Solved</span>
+      <span class="badge badge-green">All Formulas</span>
+      <span class="badge badge-purple">6 Noise Models</span>
+    </div>
+  </div>
+</div>
+
+<!-- Sidebar Overlay -->
+<div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">Topics</span>
+    <button class="sidebar-close" onclick="closeSidebar()">✕ Close</button>
+  </div>
+  <a class="nav-item active" href="#overview" onclick="closeSidebar()">📊 Overview & Importance</a>
+  <a class="nav-item" href="#model" onclick="closeSidebar()">🏗️ Degradation Model<span class="nav-imp high">90%</span></a>
+  <a class="nav-item" href="#noise-models" onclick="closeSidebar()">📈 Noise Models (All 6)<span class="nav-imp high">90%</span></a>
+  <a class="nav-item" href="#noise-filters" onclick="closeSidebar()">🔊 Spatial Noise Filters<span class="nav-imp high">85%</span></a>
+  <a class="nav-item" href="#degradation-fn" onclick="closeSidebar()">⚡ Degradation Functions<span class="nav-imp med">80%</span></a>
+  <a class="nav-item" href="#inverse" onclick="closeSidebar()">🔄 Inverse Filtering<span class="nav-imp med">75%</span></a>
+  <a class="nav-item" href="#wiener" onclick="closeSidebar()">🎯 Wiener Filter (MMSE)<span class="nav-imp high">85%</span></a>
+  <a class="nav-item" href="#constrained" onclick="closeSidebar()">📐 Constrained LS Filter<span class="nav-imp low">65%</span></a>
+  <a class="nav-item" href="#homomorphic" onclick="closeSidebar()">💡 Homomorphic Filtering<span class="nav-imp high">80%</span></a>
+  <a class="nav-item" href="#pyq-master" onclick="closeSidebar()">📝 All PYQs Master List</a>
+</nav>
+
+<!-- CONTENT -->
+<main class="content">
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- OVERVIEW -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="overview">
+  <div class="section-header">
+    <span class="section-num">00</span>
+    <h2 class="section-title">Topic Importance Analysis</h2>
+  </div>
+
+  <div class="theory-block">
+    <p>Based on RTU PYQs from 2022, 2023, 2024, and 2025, here is the importance of each Unit 4 sub-topic:</p>
+
+    <div class="imp-bar-wrap imp-high" style="margin-top:16px">
+      <div class="imp-bar-label"><span>Degradation & Restoration Model (Block diagram)</span><span style="color:#f04a7a">90%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:90%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Noise Models — PDFs (Gaussian, Rayleigh, S&P etc.)</span><span style="color:#f04a7a">90%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:90%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Spatial Noise Filters (Mean, Median, Order-Stats)</span><span style="color:#f04a7a">85%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:85%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Wiener Filter / MMSE Filtering</span><span style="color:#f04a7a">85%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:85%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Homomorphic Filtering</span><span style="color:#f0c44a">80%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:80%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Degradation Functions (Motion Blur, Atmospheric)</span><span style="color:#f0c44a">80%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:80%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Inverse Filtering + Wraparound Error</span><span style="color:#f0c44a">75%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:75%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-low" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Constrained Least-Squares Filter</span><span style="color:#c44af0">65%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:65%"></div></div>
+    </div>
+  </div>
+
+  <div class="tip-box purple">
+    <div class="tip-icon">⚡</div>
+    <div class="tip-content">
+      <div class="tip-title">Exam Strategy for Unit 4</div>
+      <p><strong>Noise PDF table + degradation model block diagram</strong> are the two anchors of this unit — they appear in almost every paper. The 2023 Part C Q1 (noise PDFs + restoration process) is a 10-mark gold-standard answer. Homomorphic filtering (2023 Part B Q4, 2025 Part B Q4) is a repeat — memorize the log→FFT→filter→IFFT→exp pipeline. MMSE/Wiener filter formula earns marks in Part A even when the full question is not asked.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- DEGRADATION MODEL -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="model">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">Image Degradation & Restoration Model</h2>
+    <span class="importance-pill badge badge-red">🔥 90% · Part A/B/C</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What is Image Degradation?</h3>
+    <p><span class="highlight">Image Degradation</span> is the process where the quality of a digital image is reduced due to some degradation function (like motion blur, atmospheric distortion) and/or additive noise. The degraded image g(x,y) is what we actually observe. The goal of <span class="highlight">Image Restoration</span> is to recover the original image f(x,y) from the degraded g(x,y).</p>
+
+    <p><strong>Key difference from Enhancement:</strong></p>
+    <ul>
+      <li><strong>Enhancement</strong> (Unit 3): Subjective improvement — no mathematical model; just make it "look better".</li>
+      <li><strong>Restoration</strong> (Unit 4): Objective, model-based — we know the degradation process and try to mathematically reverse it.</li>
+    </ul>
+  </div>
+
+  <div class="theory-block">
+    <h3>The Degradation Model — Most Important Diagram</h3>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 680 160" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="340" y="18" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="11">IMAGE DEGRADATION AND RESTORATION MODEL</text>
+        <!-- Original -->
+        <rect x="10" y="35" width="80" height="50" rx="5" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="50" y="57" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="9">ORIGINAL</text>
+        <text x="50" y="72" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">f(x,y)</text>
+        <!-- Arrow to H -->
+        <polygon points="94,60 110,54 110,66" fill="#c44af0"/>
+        <!-- H box -->
+        <rect x="114" y="35" width="80" height="50" rx="5" fill="#1c2130" stroke="#c44af0" stroke-width="1.5"/>
+        <text x="154" y="57" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="9">DEGRAD.</text>
+        <text x="154" y="72" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">H(u,v)</text>
+        <!-- Arrow to plus -->
+        <polygon points="198,60 214,54 214,66" fill="#c44af0"/>
+        <!-- Plus node -->
+        <circle cx="224" cy="60" r="14" fill="#1c2130" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="224" y="65" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="16">+</text>
+        <!-- Noise coming in from top -->
+        <rect x="195" y="5" width="60" height="28" rx="4" fill="#1c2130" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="225" y="20" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">NOISE</text>
+        <text x="225" y="30" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">η(x,y)</text>
+        <polygon points="225,38 219,34 231,34" fill="#f04a7a"/>
+        <!-- Arrow from plus to degraded -->
+        <polygon points="242,60 258,54 258,66" fill="#c44af0"/>
+        <!-- Degraded image -->
+        <rect x="262" y="35" width="90" height="50" rx="5" fill="#1c2130" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="307" y="57" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">DEGRADED</text>
+        <text x="307" y="72" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">g(x,y)</text>
+        <!-- Divider line -->
+        <line x1="370" y1="20" x2="370" y2="130" stroke="#2a3045" stroke-width="1.5" stroke-dasharray="5,5"/>
+        <text x="371" y="135" fill="#2a3045" font-family="IBM Plex Mono" font-size="8">DEGRADATION ↑ | RESTORATION ↓</text>
+        <!-- Arrow to restoration filter -->
+        <polygon points="356,60 375,54 375,66" fill="#4af0b4"/>
+        <!-- Restoration filter -->
+        <rect x="379" y="35" width="100" height="50" rx="5" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="429" y="54" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">RESTORATION</text>
+        <text x="429" y="67" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">FILTER</text>
+        <text x="429" y="79" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">H⁻¹ / Wiener</text>
+        <!-- Arrow to estimate -->
+        <polygon points="483,60 500,54 500,66" fill="#4af0b4"/>
+        <!-- Estimate -->
+        <rect x="504" y="35" width="100" height="50" rx="5" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="554" y="57" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">RESTORED</text>
+        <text x="554" y="72" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">f̂(x,y)</text>
+        <!-- Correction label at bottom -->
+        <text x="50" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Original</text>
+        <text x="154" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Blur/dist.</text>
+        <text x="225" y="115" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Noise added</text>
+        <text x="307" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">What we see</text>
+        <text x="429" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Math model</text>
+        <text x="554" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Estimate</text>
+      </svg>
+      <div class="diagram-cap">Fig 1.1 — Image Degradation & Restoration Model — Draw this in EVERY Part C question!</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">Degradation Model — Spatial Domain</span>
+      <div class="formula">g(x,y) = h(x,y) ★ f(x,y) + η(x,y)</div>
+      <div class="note">★ = convolution, h(x,y) = degradation/PSF, η = additive noise</div>
+      <span class="label" style="margin-top:12px">Degradation Model — Frequency Domain</span>
+      <div class="formula">G(u,v) = H(u,v) · F(u,v) + N(u,v)</div>
+      <div class="note">Convolution in spatial = multiplication in frequency domain (from Unit 3 DFT property!)</div>
+    </div>
+
+    <div class="tip-box connect">
+      <div class="tip-icon">🔗</div>
+      <div class="tip-content">
+        <div class="tip-title">Connection to Unit 3 (Fourier Transform)</div>
+        <p>The shift from h★f (convolution) to H·F (multiplication) directly uses the <strong>Convolution Theorem</strong> from Unit 3: DFT(h★f) = DFT(h)·DFT(f). This is the entire reason we work in frequency domain for restoration — division is much simpler than deconvolution. <strong>Always mention this connection in Part C answers.</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Types of Degradation</h3>
+    <ul>
+      <li><strong>Motion blur:</strong> Camera or object moves during exposure → uniform smearing</li>
+      <li><strong>Out-of-focus blur (defocus):</strong> Lens focused incorrectly → disc-shaped PSF</li>
+      <li><strong>Atmospheric turbulence:</strong> Light passing through turbulent air → random blur</li>
+      <li><strong>Additive noise:</strong> Electronic sensors, transmission errors → random pixel perturbations</li>
+    </ul>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Degradation Model</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain the model of image degradation and restoration process in brief.</div>
+      <div class="pyq-meta">June 2023 · Part A Q5 · 2 marks | Also asked in 2022 Part B Q3</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Image Degradation & Restoration Model:</strong><br><br>
+          <em>Degradation Process:</em> An original image f(x,y) passes through a degradation function H and additive noise η(x,y) is introduced, producing the degraded image:<br>
+          g(x,y) = h(x,y) ★ f(x,y) + η(x,y)<br>
+          In frequency domain: G(u,v) = H(u,v)·F(u,v) + N(u,v)<br><br>
+          <em>Restoration Process:</em> Given only g(x,y) and some knowledge of H and N, the restoration filter estimates f̂(x,y) ≈ f(x,y). The estimate minimizes some error criterion (e.g., mean square error).<br><br>
+          [Draw the block diagram: f(x,y) → H(u,v) → + → g(x,y) → Restoration Filter → f̂(x,y), with N joining at +]<br><br>
+          Key difference from Enhancement: Restoration is objective/model-based; enhancement is subjective/empirical.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- NOISE MODELS -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="noise-models">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2 class="section-title">Noise Models — All 6 PDFs</h2>
+    <span class="importance-pill badge badge-red">🔥 90% · Part C Must-Know</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What is Noise in Images?</h3>
+    <p><span class="highlight">Noise</span> is any unwanted perturbation to the pixel values. It originates from image acquisition (sensor noise, thermal noise), transmission errors, or quantization. Noise is modeled as a <strong>random variable</strong> with a specific probability density function (PDF).</p>
+    <p><strong>Most noise is additive:</strong> g(x,y) = f(x,y) + η(x,y), where η is the noise term.</p>
+    <p><strong>Why "additive"?</strong> Because in CCD/CMOS sensors, thermal electron fluctuations simply add to the signal. It can be processed and subtracted. Multiplicative noise (like speckle in SAR) is harder to handle.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>The 6 Noise Models — Formulas & Shapes</h3>
+
+    <div class="noise-grid">
+      <!-- Gaussian -->
+      <div class="noise-card">
+        <h4 class="nc-g">1. Gaussian Noise</h4>
+        <div class="formula-box" style="padding:10px 12px;margin:8px 0">
+          <div class="formula" style="font-size:12px">p(z) = (1/√(2πσ)) · e^(-(z-μ)²/(2σ²))</div>
+        </div>
+        <p style="font-size:13px"><strong>μ</strong> = mean intensity, <strong>σ²</strong> = variance (spread)<br>
+        <strong>Shape:</strong> Bell curve, symmetric about μ<br>
+        <strong>Cause:</strong> Electronic sensor noise, poor illumination, thermal noise<br>
+        <strong>Use:</strong> Most commonly assumed noise model (easiest math)</p>
+        <div class="tip-box validate" style="margin-top:8px;padding:8px 12px">
+          <div class="tip-content"><p style="font-size:12px">⭐ Most important noise type — appears in ALL years. Symmetric PDF = equal probability of positive and negative perturbations.</p></div>
+        </div>
+      </div>
+
+      <!-- Rayleigh -->
+      <div class="noise-card">
+        <h4 class="nc-r">2. Rayleigh Noise</h4>
+        <div class="formula-box" style="padding:10px 12px;margin:8px 0">
+          <div class="formula" style="font-size:12px">p(z) = (2(z-a)/b)·e^(-(z-a)²/b), z≥a<br>p(z) = 0, z&lt;a</div>
+        </div>
+        <p style="font-size:13px"><strong>Mean:</strong> a + √(πb/4)<br>
+        <strong>Variance:</strong> b(4-π)/4<br>
+        <strong>Shape:</strong> Right-skewed, peak at z = a + √(b/2)<br>
+        <strong>Cause:</strong> Range imaging (radar), distance measurements<br>
+        <strong>Note:</strong> Not symmetric — skewed to the right</p>
+      </div>
+
+      <!-- Erlang (Gamma) -->
+      <div class="noise-card">
+        <h4 class="nc-e">3. Erlang (Gamma) Noise</h4>
+        <div class="formula-box" style="padding:10px 12px;margin:8px 0">
+          <div class="formula" style="font-size:12px">p(z) = (aᵇz^(b-1)/(b-1)!)·e^(-az), z≥0<br>p(z) = 0, z&lt;0</div>
+        </div>
+        <p style="font-size:13px"><strong>Mean:</strong> b/a, <strong>Variance:</strong> b/a²<br>
+        <strong>Shape:</strong> Right-skewed, can vary from exponential to near-Gaussian<br>
+        <strong>Cause:</strong> Laser imaging, positron emission tomography<br>
+        <strong>Note:</strong> When b=1, becomes Exponential noise</p>
+      </div>
+
+      <!-- Exponential -->
+      <div class="noise-card">
+        <h4 class="nc-b">4. Exponential Noise</h4>
+        <div class="formula-box" style="padding:10px 12px;margin:8px 0">
+          <div class="formula" style="font-size:12px">p(z) = a·e^(-az), z≥0<br>p(z) = 0, z&lt;0</div>
+        </div>
+        <p style="font-size:13px"><strong>Mean:</strong> 1/a, <strong>Variance:</strong> 1/a²<br>
+        <strong>Shape:</strong> Monotonically decreasing from z=0<br>
+        <strong>Cause:</strong> Special case of Erlang (b=1)<br>
+        <strong>Note:</strong> Steepest descent from zero</p>
+      </div>
+
+      <!-- Uniform -->
+      <div class="noise-card">
+        <h4 class="nc-u">5. Uniform Noise</h4>
+        <div class="formula-box" style="padding:10px 12px;margin:8px 0">
+          <div class="formula" style="font-size:12px">p(z) = 1/(b-a), a≤z≤b<br>p(z) = 0, otherwise</div>
+        </div>
+        <p style="font-size:13px"><strong>Mean:</strong> (a+b)/2, <strong>Variance:</strong> (b-a)²/12<br>
+        <strong>Shape:</strong> Flat rectangle between a and b<br>
+        <strong>Cause:</strong> Quantization noise (least-significant-bit rounding)<br>
+        <strong>Use:</strong> Theoretical analysis, simulation</p>
+      </div>
+
+      <!-- Salt & Pepper -->
+      <div class="noise-card">
+        <h4 class="nc-s">6. Salt & Pepper (Impulse) Noise</h4>
+        <div class="formula-box" style="padding:10px 12px;margin:8px 0">
+          <div class="formula" style="font-size:12px">p(z) = Pa if z=a (pepper)<br>p(z) = Pb if z=b (salt)<br>p(z) = 0 otherwise</div>
+        </div>
+        <p style="font-size:13px"><strong>a</strong> = dark value (0), <strong>b</strong> = bright value (255)<br>
+        <strong>Shape:</strong> Two impulses at opposite extremes<br>
+        <strong>Cause:</strong> Faulty pixels, transmission errors, bit errors<br>
+        <strong>Removal:</strong> Median filter (BEST for this noise!)</p>
+        <div class="tip-box trick" style="margin-top:8px;padding:8px 12px">
+          <div class="tip-content"><p style="font-size:12px">⭐ S&P noise → ALWAYS use median filter. Mean filters SMEAR the noise. Median removes isolated extreme values perfectly.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Comparison Table — All 6 Noise Models</h3>
+    <table class="comp-table">
+      <tr>
+        <th>Noise Type</th><th>PDF Shape</th><th>Symmetry</th><th>Cause</th><th>Best Filter</th>
+      </tr>
+      <tr>
+        <td><span class="hl-green">Gaussian</span></td>
+        <td>Bell curve</td><td>Symmetric ✓</td>
+        <td>Sensor, thermal</td><td>Arithmetic mean</td>
+      </tr>
+      <tr>
+        <td><span class="hl-red">Rayleigh</span></td>
+        <td>Skewed right</td><td>Asymmetric</td>
+        <td>Radar, range</td><td>Modified mean</td>
+      </tr>
+      <tr>
+        <td><span class="hl-yellow">Erlang/Gamma</span></td>
+        <td>Skewed right</td><td>Asymmetric</td>
+        <td>Laser imaging</td><td>Modified mean</td>
+      </tr>
+      <tr>
+        <td><span class="hl-blue">Exponential</span></td>
+        <td>Decaying</td><td>Asymmetric</td>
+        <td>Erlang b=1</td><td>Modified mean</td>
+      </tr>
+      <tr>
+        <td><span style="color:var(--accent5)">Uniform</span></td>
+        <td>Flat rectangle</td><td>Symmetric ✓</td>
+        <td>Quantization</td><td>Arithmetic mean</td>
+      </tr>
+      <tr>
+        <td><span style="color:#ff8c42">Salt & Pepper</span></td>
+        <td>Two impulses</td><td>Can be either</td>
+        <td>Bit errors</td><td>Median ⭐</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="tip-box trick">
+    <div class="tip-icon">🧠</div>
+    <div class="tip-content">
+      <div class="tip-title">Memory Trick — Remember All 6 Noise Models: "GREUUS"</div>
+      <p><strong>G</strong>aussian → <strong>R</strong>ayleigh → <strong>E</strong>rlang → <strong>U</strong>niform → <strong>U</strong>... wait — use "GRE UES":<br>
+      <strong>G</strong>aussian, <strong>R</strong>ayleigh, <strong>E</strong>rlang, <strong>U</strong>niform, <strong>E</strong>xponential, <strong>S</strong>alt-&-Pepper<br>
+      For PDF shapes: <strong>only Gaussian and Uniform are symmetric</strong>. All others are right-skewed or have special shapes. This is a common exam distinction!</p>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Estimating Noise Parameters from Histogram</h3>
+    <p>In practice, we estimate noise type by <strong>analyzing the image histogram</strong> in a uniform region (where all pixels should ideally have the same value):</p>
+    <ul>
+      <li>If histogram looks like a bell curve → Gaussian noise</li>
+      <li>If histogram is flat → Uniform noise</li>
+      <li>If histogram has two isolated spikes at extremes → Salt & Pepper</li>
+      <li>If histogram is right-skewed → Rayleigh or Erlang</li>
+    </ul>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Noise Models</div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Discuss different types of noise probability density functions in detail. Explain the image restoration process in the presence of noise only. Give example of at least one linear and one non-linear filter that can be used for the restoration.</div>
+      <div class="pyq-meta">June 2023 · Part C Q1 · 10 marks ⭐ GOLD STANDARD QUESTION</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Noise Probability Density Functions in Images:</strong><br><br>
+          Noise is a random perturbation to pixel values. Its statistical behavior is described by its PDF p(z), where z is the gray level. The shape of the PDF determines which filters are most effective.<br><br>
+
+          <strong>1. Gaussian Noise:</strong><br>
+          p(z) = (1/√(2πσ)) · e^(-(z-μ)²/(2σ²))<br>
+          Mean = μ, Variance = σ². Symmetric bell-shaped PDF. Most common in electronic systems. Good for linear filter removal.<br><br>
+
+          <strong>2. Rayleigh Noise:</strong><br>
+          p(z) = (2(z-a)/b)·e^(-(z-a)²/b) for z ≥ a; 0 otherwise<br>
+          Right-skewed. Common in range imaging. Mean = a + √(πb/4).<br><br>
+
+          <strong>3. Erlang (Gamma) Noise:</strong><br>
+          p(z) = (aᵇ·z^(b-1)/(b-1)!)·e^(-az) for z ≥ 0; 0 otherwise<br>
+          Also right-skewed. Used in laser imaging. When b=1, gives Exponential noise.<br><br>
+
+          <strong>4. Uniform Noise:</strong><br>
+          p(z) = 1/(b-a) for a ≤ z ≤ b; 0 otherwise<br>
+          Flat PDF. Caused by quantization. Symmetric.<br><br>
+
+          <strong>5. Salt & Pepper (Impulse) Noise:</strong><br>
+          p(z) = Pa at z=a (dark) and Pb at z=b (bright); 0 otherwise<br>
+          Random black/white pixels. Caused by bit errors, faulty sensors.<br><br>
+
+          [Draw all 5 PDFs as simple plots — bell curve, right-skewed, flat rectangle, two spikes]<br><br>
+
+          <strong>Image Restoration in Presence of Noise Only (H = identity):</strong><br>
+          When no blur, degradation model simplifies to: g(x,y) = f(x,y) + η(x,y)<br>
+          Goal: estimate f(x,y) from g(x,y) by filtering out η.<br><br>
+
+          <strong>Linear Filter Example — Arithmetic Mean Filter:</strong><br>
+          f̂(x,y) = (1/mn) · Σ g(s,t) over neighborhood Sxy<br>
+          Reduces Gaussian noise. Smooth uniform regions but blurs edges. Simple to implement.<br><br>
+
+          <strong>Non-Linear Filter Example — Median Filter:</strong><br>
+          f̂(x,y) = median{g(s,t) | (s,t) ∈ Sxy}<br>
+          Best for salt & pepper noise. Sort neighborhood values, pick middle. Preserves edges better than arithmetic mean. Non-linear because output ≠ linear combination of inputs.
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain interpixel and psychovisual redundancies with a suitable example of each. [Also: Explain Erlang noise and impulse noise. Differentiate between Gaussian and impulse noise.]</div>
+      <div class="pyq-meta">June 2023 · Part A Q8 · 2 marks | Also Part C Q2 sub-question</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Erlang (Gamma) Noise:</strong><br>
+          PDF: p(z) = (aᵇ·z^(b-1)/(b-1)!) · e^(-az), z ≥ 0<br>
+          Parameters: a > 0 (scale), b = positive integer (shape). Right-skewed distribution. Mean = b/a, Variance = b/a². Used to model noise in laser illumination systems and in positron emission tomography. When b=1, the Erlang distribution reduces to the Exponential distribution.<br><br>
+
+          <strong>Impulse (Salt & Pepper) Noise:</strong><br>
+          p(z) = Pa at z=a; Pb at z=b; 0 otherwise<br>
+          Characterised by random occurrence of completely black (0) or completely white (255) pixels, resembling salt and pepper scattered on the image. Caused by faulty memory cells, bit errors during transmission, or dust on sensor. Best removed by median filter.<br><br>
+
+          <strong>Gaussian vs. Impulse Noise — Differences:</strong><br>
+          • Gaussian: continuous bell-shaped PDF; affects every pixel with small perturbations; all intensities affected; removed by mean filters<br>
+          • Impulse: PDF has only two spikes at extremes; only a fraction of pixels affected; affected pixels take extreme values (0 or 255); removed by median filter<br>
+          • Visually: Gaussian → image looks grainy/blurry; Impulse → image has scattered black/white dots
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- NOISE FILTERS -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="noise-filters">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2 class="section-title">Spatial Noise Filters</h2>
+    <span class="importance-pill badge badge-red">🔥 85% · Part B/C</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Overview</h3>
+    <p>Spatial filters are applied to the degraded image g(x,y) to estimate the original f(x,y). Three categories:</p>
+    <ul>
+      <li><span class="highlight">Mean Filters:</span> Linear filters — compute some kind of average in neighborhood. Good for Gaussian noise.</li>
+      <li><span class="highlight">Order-Statistics Filters:</span> Non-linear — rank pixels in neighborhood, then select. Good for Salt & Pepper.</li>
+      <li><span class="highlight">Adaptive Filters:</span> Vary their behavior based on local statistics. Best overall but more complex.</li>
+    </ul>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ Mean Filters (Linear)</h3>
+
+    <h4>1. Arithmetic Mean Filter (Most Basic)</h4>
+    <div class="formula-box">
+      <span class="label">Arithmetic Mean Filter</span>
+      <div class="formula">f̂(x,y) = (1/mn) · Σ Σ g(s,t)</div>
+      <div class="note">Sum of all mn pixels in the m×n neighborhood, divided by mn. Output = neighborhood average.</div>
+      <div class="note">Reduces random variations. Blurs edges as side effect. Best for Gaussian noise.</div>
+    </div>
+
+    <h4>2. Geometric Mean Filter</h4>
+    <div class="formula-box">
+      <span class="label">Geometric Mean Filter</span>
+      <div class="formula">f̂(x,y) = [Π g(s,t)]^(1/mn)</div>
+      <div class="note">Product of all mn pixels, raised to power 1/mn. Product = π symbol.</div>
+      <div class="note">Less blurring than arithmetic mean. Problem: if any pixel = 0, product = 0 (edge case).</div>
+    </div>
+
+    <h4>3. Harmonic Mean Filter</h4>
+    <div class="formula-box">
+      <span class="label">Harmonic Mean Filter</span>
+      <div class="formula">f̂(x,y) = mn / [Σ Σ (1/g(s,t))]</div>
+      <div class="note">Works well for salt noise (bright impulses). Fails for pepper noise (zeros in denominator).</div>
+    </div>
+
+    <h4>4. Contraharmonic Mean Filter ⭐ (Important!)</h4>
+    <div class="formula-box">
+      <span class="label">Contraharmonic Mean Filter</span>
+      <div class="formula">f̂(x,y) = Σ g(s,t)^(Q+1) / Σ g(s,t)^Q</div>
+      <div class="note">Q = filter order (positive or negative). Q > 0 → eliminates pepper noise. Q < 0 → eliminates salt noise. Q = 0 → reduces to arithmetic mean. Q = -1 → reduces to harmonic mean.</div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">🧠</div>
+      <div class="tip-content">
+        <div class="tip-title">Contraharmonic Trick — Remember with "Salt goes Negative, Pepper goes Positive"</div>
+        <p><strong>Q > 0:</strong> High powers amplify large values → reduces <strong>pepper</strong> (dark impulses) noise.<br>
+        <strong>Q < 0:</strong> High negative powers emphasize small values → reduces <strong>salt</strong> (bright impulses) noise.<br>
+        Mnemonic: "S for Salt, S for negative-Sign (Q < 0)" → Salt needs Q negative.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ Order-Statistics Filters (Non-Linear)</h3>
+
+    <h4>1. Median Filter — BEST for Salt & Pepper!</h4>
+    <div class="formula-box">
+      <span class="label">Median Filter</span>
+      <div class="formula">f̂(x,y) = median{g(s,t) | (s,t) ∈ Sxy}</div>
+      <div class="note">Sort all mn pixel values in neighborhood. Pick the middle value. For mn=9 pixels, pick the 5th value.</div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-label">📌 Median Filter Numerical Example</div>
+      <p>3×3 neighborhood values: 5, 8, 3, 100, 6, 4, 7, 9, 200</p>
+      <p>(100 and 200 are salt/pepper noise)</p>
+      <p><strong>Sort:</strong> 3, 4, 5, 6, 7, 8, 9, 100, 200</p>
+      <p><strong>Median (5th value):</strong> <span class="hl-green">7</span></p>
+      <p>Result: 7 (outliers 100 and 200 completely removed!)</p>
+      <p>Compare with arithmetic mean: (5+8+3+100+6+4+7+9+200)/9 = 342/9 = 38 (corrupted by noise!)</p>
+    </div>
+
+    <h4>2. Max Filter</h4>
+    <div class="formula-box">
+      <div class="formula">f̂(x,y) = max{g(s,t) | (s,t) ∈ Sxy}</div>
+      <div class="note">Picks the brightest pixel in the neighborhood. Removes pepper noise (dark impulses). Brightens image overall.</div>
+    </div>
+
+    <h4>3. Min Filter</h4>
+    <div class="formula-box">
+      <div class="formula">f̂(x,y) = min{g(s,t) | (s,t) ∈ Sxy}</div>
+      <div class="note">Picks the darkest pixel. Removes salt noise (bright impulses). Darkens image overall.</div>
+    </div>
+
+    <h4>4. Midpoint Filter</h4>
+    <div class="formula-box">
+      <div class="formula">f̂(x,y) = (1/2)[max{g} + min{g}]</div>
+      <div class="note">Average of max and min in neighborhood. Good for randomly distributed noise like Gaussian or Uniform.</div>
+    </div>
+
+    <h4>5. Alpha-Trimmed Mean Filter</h4>
+    <div class="formula-box">
+      <span class="label">Alpha-Trimmed Mean</span>
+      <div class="formula">f̂(x,y) = [1/(mn-d)] · Σ gᵣ(s,t)</div>
+      <div class="note">Delete d/2 lowest AND d/2 highest values from neighborhood. Average the remaining (mn-d) values.</div>
+      <div class="note">d=0 → arithmetic mean. d=mn-1 → median filter. Best for mixed Gaussian + S&P noise.</div>
+    </div>
+
+    <div class="tip-box validate">
+      <div class="tip-icon">✅</div>
+      <div class="tip-content">
+        <div class="tip-title">Quick Selector Guide — Which Filter for Which Noise?</div>
+        <p><strong>Gaussian noise only</strong> → Arithmetic mean (or Wiener)<br>
+        <strong>Salt & Pepper only</strong> → Median filter<br>
+        <strong>Only pepper (dark spots)</strong> → Max filter or Contraharmonic Q>0<br>
+        <strong>Only salt (bright spots)</strong> → Min filter or Contraharmonic Q&lt;0<br>
+        <strong>Mixed Gaussian + S&P</strong> → Alpha-trimmed mean<br>
+        <strong>General (best quality)</strong> → Adaptive Wiener filter</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Adaptive Filters</h3>
+    <p><span class="highlight">Adaptive filters</span> adjust their behavior based on local image statistics. They perform better than fixed filters because they can preserve edges where they exist and smooth noise in uniform regions.</p>
+
+    <h4>Adaptive Median Filter</h4>
+    <p>Changes the neighborhood size dynamically. Works on S&P noise. Can preserve detail better than fixed median filter.</p>
+    <p><strong>Algorithm:</strong></p>
+    <div class="steps">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Start with small window (e.g., 3×3). Compute z_min, z_max, z_med.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">If z_min < z_med < z_max: the median is a valid (not noise) pixel. Check if center pixel g(x,y) is noise or signal.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">If z_min < g(x,y) < z_max → output g(x,y) unchanged (not noise). Else → output z_med (it's noise, replace with median).</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">If z_med is noise (= z_min or z_max) → enlarge window and repeat. Continue until max window size.</div></div>
+    </div>
+
+    <h4>Adaptive Local Noise Reduction Filter</h4>
+    <div class="formula-box">
+      <span class="label">Adaptive Local Noise Reduction</span>
+      <div class="formula">f̂(x,y) = g(x,y) - (σ²_η / σ²_L) · [g(x,y) - m_L]</div>
+      <div class="note">σ²_η = global noise variance. σ²_L = local variance in neighborhood. m_L = local mean.</div>
+      <div class="note">If local variance >> noise variance → little smoothing (edge area). If local variance ≈ noise variance → heavy smoothing (flat area). Smart!</div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Noise Filters</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What is minimum mean square error filtering? (Also: Explain spatial filtering. Define spatial correlation and convolution.)</div>
+      <div class="pyq-meta">June 2022 · Part A Q3 · 2 marks | Part B Q2 · 10 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Minimum Mean Square Error (MMSE) / Wiener Filtering:</strong><br><br>
+          The Wiener filter is an optimal linear filter that minimizes the mean square error (MSE) between the estimated f̂(x,y) and the actual f(x,y):<br>
+          MSE = E{|f(x,y) - f̂(x,y)|²} = minimum<br><br>
+
+          In frequency domain, the Wiener filter is:<br>
+          F̂(u,v) = [H*(u,v) / (|H(u,v)|² + Sη(u,v)/Sf(u,v))] · G(u,v)<br><br>
+          Where:<br>
+          • H*(u,v) = complex conjugate of degradation function<br>
+          • |H(u,v)|² = power spectrum of H<br>
+          • Sη(u,v) = power spectrum of noise N<br>
+          • Sf(u,v) = power spectrum of original image f<br><br>
+
+          Simplified form (when ratio is approximately constant K):<br>
+          F̂(u,v) = [H*(u,v) / (|H(u,v)|² + K)] · G(u,v)<br>
+          K = Sη/Sf = noise-to-signal power ratio<br><br>
+
+          <strong>Key Properties:</strong><br>
+          • When noise is zero (N=0): reduces to inverse filter F̂ = G/H ✓<br>
+          • When there is high noise: denominator |H|²+K becomes large → suppresses noise ✓<br>
+          • K is a tuning parameter — adjusted to trade off between noise removal and blurring<br><br>
+
+          <strong>Advantage over Inverse Filter:</strong> Wiener filter doesn't amplify noise when H(u,v) is small or zero (where inverse filter divides by ~0 and explodes).
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- DEGRADATION FUNCTIONS -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="degradation-fn">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2 class="section-title">Degradation Functions</h2>
+    <span class="importance-pill badge badge-yellow">80% · Part B/C</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What is a Degradation Function?</h3>
+    <p>The <span class="highlight">degradation function H(u,v)</span> (or PSF — Point Spread Function in spatial domain h(x,y)) describes how the imaging system blurs the original image. Knowing H is essential for restoration.</p>
+    <p><strong>Three ways to estimate H:</strong></p>
+    <ul>
+      <li><strong>Observation:</strong> Image a known point source (impulse) and the output IS the PSF h(x,y)</li>
+      <li><strong>Experimentation:</strong> Use the same imaging system to capture a test pattern and analyze distortion</li>
+      <li><strong>Mathematical modeling:</strong> Derive H from physics of the degradation process</li>
+    </ul>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ Atmospheric Turbulence Model</h3>
+    <p>When light passes through the atmosphere, random variations in refractive index cause blurring. Mathematically modeled as:</p>
+
+    <div class="formula-box">
+      <span class="label">Atmospheric Turbulence Degradation</span>
+      <div class="formula">H(u,v) = e^(-k(u² + v²)^(5/6))</div>
+      <div class="note">k = constant related to turbulence severity. Larger k → more blur.</div>
+      <div class="note">This is a Gaussian-like function in frequency domain → high frequencies are attenuated (blurred).</div>
+    </div>
+
+    <p>Three severity levels commonly used:</p>
+    <ul>
+      <li>Severe turbulence: k = 0.0025</li>
+      <li>Mild turbulence: k = 0.001</li>
+      <li>Low turbulence: k = 0.00025</li>
+    </ul>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ Linear Motion Blur (Most RTU-Asked)</h3>
+    <p>If the image moves <strong>horizontally by 'a' pixels</strong> during exposure time T, the resulting PSF in frequency domain is:</p>
+
+    <div class="formula-box">
+      <span class="label">Linear Horizontal Motion Blur — Frequency Domain</span>
+      <div class="formula">H(u,v) = (T/πu·a) · sin(πu·a) · e^(-jπu·a)</div>
+      <div class="note">a = amount of motion (pixels), T = exposure time</div>
+      <div class="note">This creates periodic zeros in H(u,v) — places where H=0 cause problems in inverse filtering!</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">General Linear Motion (horizontal by a, vertical by b)</span>
+      <div class="formula">H(u,v) = (T/π(ua+vb)) · sin(π(ua+vb)) · e^(-jπ(ua+vb))</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 620 140" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="310" y="18" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="11">Effect of Motion Blur</text>
+        <!-- Original -->
+        <rect x="20" y="35" width="80" height="60" rx="4" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="60" y="65" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono" font-size="20">A</text>
+        <text x="60" y="105" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Original</text>
+        <!-- Motion arrow -->
+        <polygon points="105,65 125,58 125,72" fill="#f0c44a"/>
+        <text x="115" y="80" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="8">Motion</text>
+        <!-- Blurred -->
+        <rect x="130" y="35" width="120" height="60" rx="4" fill="#1c2130" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="190" y="65" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="20" opacity="0.4">A</text>
+        <text x="210" y="65" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="20" opacity="0.7">A</text>
+        <text x="220" y="65" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono" font-size="20">A</text>
+        <text x="190" y="105" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">Motion Blurred g(x,y)</text>
+        <!-- Arrow -->
+        <polygon points="260,65 278,58 278,72" fill="#4af0b4"/>
+        <!-- H known -->
+        <rect x="280" y="45" width="70" height="40" rx="4" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="315" y="64" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">H known</text>
+        <text x="315" y="77" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Restoration</text>
+        <!-- Arrow -->
+        <polygon points="355,65 373,58 373,72" fill="#4af0b4"/>
+        <!-- Restored -->
+        <rect x="378" y="35" width="80" height="60" rx="4" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="418" y="65" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono" font-size="20">A</text>
+        <text x="418" y="105" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">Restored f̂(x,y)</text>
+        <!-- Note -->
+        <rect x="470" y="35" width="140" height="60" rx="4" fill="#f0c44a12" stroke="#f0c44a30" stroke-width="1"/>
+        <text x="540" y="58" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">H zeros cause</text>
+        <text x="540" y="72" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">inverse filter</text>
+        <text x="540" y="86" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">to EXPLODE!</text>
+      </svg>
+      <div class="diagram-cap">Fig 4.1 — Motion blur: image smeared in motion direction; H(u,v) has zeros making inverse filter unstable</div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Degradation Functions</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain the image restoration technique to remove the blur caused by uniform linear motion.</div>
+      <div class="pyq-meta">2024 · Part B Q4 · 4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Restoration for Uniform Linear Motion Blur:</strong><br><br>
+          <strong>Degradation Model:</strong><br>
+          When a camera or object moves uniformly during exposure, the image is blurred in the direction of motion. For horizontal motion of 'a' pixels during exposure time T:<br>
+          G(u,v) = H(u,v)·F(u,v) + N(u,v)<br>
+          Where H(u,v) = (T/πua)·sin(πua)·e^(-jπua)<br><br>
+
+          <strong>Problem with Direct Inverse Filtering:</strong><br>
+          H(u,v) has zeros at u = n/a (for integer n). At these frequencies, G/H = 0/0 → undefined. Also, noise amplification at near-zero H values destroys the result.<br><br>
+
+          <strong>Restoration Approach 1 — Truncated Inverse Filter:</strong><br>
+          F̂(u,v) = G(u,v)/H(u,v) when |H(u,v)| > threshold ε; else F̂ = G(u,v)<br>
+          This avoids dividing by very small H values. Simple but suboptimal.<br><br>
+
+          <strong>Restoration Approach 2 — Wiener Filter (Preferred):</strong><br>
+          F̂(u,v) = [H*(u,v)/(|H(u,v)|² + K)] · G(u,v)<br>
+          Where K = Sη/Sf ≈ noise-to-signal ratio (constant approximation)<br>
+          This avoids division by zero by adding K in denominator. Minimizes MSE.<br><br>
+
+          <strong>Steps:</strong><br>
+          1. Take DFT of blurred image G(u,v) = DFT{g(x,y)}<br>
+          2. Compute H(u,v) using the motion blur model formula<br>
+          3. Apply Wiener filter: F̂(u,v) = [H*/(|H|² + K)] · G<br>
+          4. Take IDFT: f̂(x,y) = IDFT{F̂(u,v)}<br><br>
+
+          <strong>Result:</strong> Restored image with motion deblurred, with acceptable noise level controlled by K.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- INVERSE FILTERING -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="inverse">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2 class="section-title">Inverse Filtering</h2>
+    <span class="importance-pill badge badge-yellow">75% · Part A/B</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Concept of Inverse Filtering</h3>
+    <p>The simplest restoration approach: since G(u,v) = H(u,v)·F(u,v) + N(u,v), just divide both sides by H(u,v):</p>
+
+    <div class="formula-box">
+      <span class="label">Inverse Filter</span>
+      <div class="formula">F̂(u,v) = G(u,v) / H(u,v) = F(u,v) + N(u,v)/H(u,v)</div>
+      <div class="note">Ideally (no noise): F̂ = F + 0 = F → perfect restoration.</div>
+      <div class="note">With noise: the term N/H can be catastrophic when H(u,v) ≈ 0 → noise is amplified to infinity!</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 580 130" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="290" y="18" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="11">Inverse Filter Problem — H(u,v) Zeros</text>
+        <!-- Axis for H(u,v) -->
+        <line x1="20" y1="100" x2="260" y2="100" stroke="#2a3045" stroke-width="1.5"/>
+        <line x1="20" y1="30" x2="20" y2="100" stroke="#2a3045" stroke-width="1.5"/>
+        <text x="265" y="103" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">u</text>
+        <text x="22" y="25" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">H</text>
+        <!-- H(u,v) oscillating through zero -->
+        <path d="M20,55 Q50,30 80,70 Q110,100 140,40 Q170,5 200,75 Q230,100 260,80" stroke="#4af0b4" stroke-width="2" fill="none"/>
+        <text x="140" y="115" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">H(u,v) — oscillates, crosses zero</text>
+        <!-- Arrow -->
+        <polygon points="280,65 295,58 295,72" fill="#f04a7a"/>
+        <!-- 1/H explosion -->
+        <line x1="310" y1="100" x2="560" y2="100" stroke="#2a3045" stroke-width="1.5"/>
+        <line x1="310" y1="20" x2="310" y2="100" stroke="#2a3045" stroke-width="1.5"/>
+        <text x="565" y="103" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">u</text>
+        <text x="312" y="15" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">1/H → ∞</text>
+        <path d="M310,75 Q335,80 360,70 Q380,40 392,5" stroke="#f04a7a" stroke-width="2" fill="none"/>
+        <line x1="395" y1="5" x2="395" y2="100" stroke="#f04a7a" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="394" y="115" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">H=0</text>
+        <path d="M398,100 Q415,30 440,65 Q470,90 500,75 Q530,60 560,70" stroke="#f04a7a" stroke-width="2" fill="none"/>
+        <text x="435" y="115" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">1/H(u,v) — EXPLODES at zeros!</text>
+      </svg>
+      <div class="diagram-cap">Fig 5.1 — H(u,v) has zeros → 1/H → ∞ → noise amplified to infinity at those frequencies</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Problems with Inverse Filtering</h3>
+    <ul>
+      <li><strong>Zero-crossing problem:</strong> When H(u,v) = 0 (zeros of the degradation function), the noise term N/H → ∞. Even tiny noise causes catastrophic artifacts.</li>
+      <li><strong>Near-zero amplification:</strong> When H is small but not zero, N/H becomes very large, amplifying noise drastically.</li>
+      <li><strong>No knowledge of noise:</strong> Inverse filter completely ignores the noise statistics.</li>
+      <li><strong>Impractical for real images:</strong> Real images ALWAYS have some noise, so pure inverse filtering always fails.</li>
+    </ul>
+
+    <h4>Truncated Inverse Filter (Practical Solution)</h4>
+    <div class="formula-box">
+      <span class="label">Truncated Inverse Filter</span>
+      <div class="formula">F̂(u,v) = G(u,v)/H(u,v)   if |H(u,v)| > ε (threshold)</div>
+      <div class="formula">F̂(u,v) = 0                 if |H(u,v)| ≤ ε</div>
+      <div class="note">ε is chosen to avoid amplifying noise at near-zero H values. Better than pure inverse filter but still suboptimal.</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Wraparound Error in Frequency Domain Filtering</h3>
+    <p>When performing convolution in the frequency domain (via FFT), we must be careful about <span class="highlight">wraparound error</span> (also called circular convolution error).</p>
+
+    <div class="formula-box">
+      <span class="label">Wraparound Error — Why it Happens</span>
+      <div class="formula">Circular convolution (DFT) ≠ Linear convolution (correct result)</div>
+      <div class="note">The DFT treats the signal as if it were periodic. If the signal is not truly periodic, the "wrap-around" from the end of one period to the start of the next creates spurious artifacts.</div>
+    </div>
+
+    <h4>Solution: Zero-Padding</h4>
+    <div class="steps">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">If image f is M×N and filter h is J×K, the output of linear convolution is (M+J-1)×(N+K-1).</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Zero-pad both f AND h to size at least (M+J-1)×(N+K-1) before taking FFT.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">Multiply in frequency domain (now equivalent to linear convolution).</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">Take IFFT and crop to original M×N size.</div></div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">⚡</div>
+      <div class="tip-content">
+        <div class="tip-title">Wraparound Error — Exam Answer (2 lines)</div>
+        <p>Wraparound error occurs when the DFT treats the image as periodic, causing the edges of the image to "wrap around" and corrupt the filtered result. It is prevented by zero-padding both the image and the filter to at least size (M+J-1)×(N+K-1) before computing the DFT.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Inverse Filtering & Wraparound</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What do you understand by inverse filtering in image processing?</div>
+      <div class="pyq-meta">June 2023 · Part A Q6 · 2 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Inverse Filtering:</strong><br><br>
+          Inverse filtering is the simplest restoration technique. Given the degraded image G(u,v) = H(u,v)·F(u,v) + N(u,v), the inverse filter estimates the original by dividing:<br>
+          F̂(u,v) = G(u,v)/H(u,v) = F(u,v) + N(u,v)/H(u,v)<br><br>
+          <strong>Limitation:</strong> When H(u,v) ≈ 0, the noise term N/H → ∞, making the restored image meaningless. Pure inverse filtering is impractical for real images that always contain noise.<br><br>
+          <strong>Improvement:</strong> Truncate — only apply 1/H when |H| > threshold ε; zero out at other frequencies.
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What is wraparound error in frequency domain filtering?</div>
+      <div class="pyq-meta">June 2023 · Part A Q7 · 2 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Wraparound Error:</strong><br><br>
+          When frequency domain filtering is performed using the DFT, the DFT implicitly assumes the image is periodic (tiles infinitely). When this periodicity assumption is violated, the tail of one period of the image "wraps around" and overlaps with the beginning of the next period, creating corruption in the filtered output. This is called <strong>wraparound error</strong> or circular convolution artifact.<br><br>
+          <strong>Prevention:</strong> Zero-pad the image and filter to size (M+J-1)×(N+K-1) before computing the DFT, where M×N = image size and J×K = filter size. This ensures that the circular convolution result equals the linear convolution result, eliminating wraparound.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- WIENER FILTER -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="wiener">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2 class="section-title">Wiener Filter (MMSE)</h2>
+    <span class="importance-pill badge badge-red">🔥 85% · Part A/B/C</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Why Wiener Filter?</h3>
+    <p>The inverse filter fails because it ignores noise. The <span class="highlight">Wiener filter</span> (also called Minimum Mean Square Error filter) solves this by <strong>incorporating knowledge of both the degradation H and the noise statistics</strong>. It finds the restoration filter that minimizes the statistical expectation of the squared error between the true f and estimated f̂.</p>
+
+    <div class="formula-box">
+      <span class="label">Wiener Filter — Optimal Restoration</span>
+      <div class="formula">F̂(u,v) = W(u,v) · G(u,v)</div>
+      <div class="formula" style="margin-top:8px">W(u,v) = H*(u,v) / [|H(u,v)|² + Sη(u,v)/Sf(u,v)]</div>
+      <div class="note">H*(u,v) = complex conjugate of H. Sη = power spectral density of noise. Sf = power spectral density of original image f.</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">Practical Wiener Filter (constant K approximation)</span>
+      <div class="formula">F̂(u,v) = [H*(u,v) / (|H(u,v)|² + K)] · G(u,v)</div>
+      <div class="note">K = Sη/Sf ≈ constant = noise-to-signal power spectral ratio. K is the "knob" to tune the filter.</div>
+      <div class="note">• K = 0 → pure inverse filter (no noise tolerance)</div>
+      <div class="note">• K → ∞ → output → 0 (too much regularization)</div>
+      <div class="note">• Optimal K → balanced between noise removal and blur correction</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>How Wiener Filter Works — Intuition</h3>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 600 150" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="300" y="18" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="11">Wiener Filter — Frequency Domain Operation</text>
+        <!-- g -->
+        <rect x="10" y="35" width="70" height="45" rx="4" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="45" y="61" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="10">G(u,v)</text>
+        <!-- DFT -->
+        <polygon points="85,58 103,51 103,65" fill="#c44af0"/>
+        <!-- Multiply by W -->
+        <rect x="107" y="35" width="100" height="45" rx="4" fill="#1c2130" stroke="#c44af0" stroke-width="1.5"/>
+        <text x="157" y="54" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="9">Multiply by</text>
+        <text x="157" y="68" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="9">W(u,v)</text>
+        <!-- Arrow -->
+        <polygon points="211,58 229,51 229,65" fill="#c44af0"/>
+        <!-- F hat -->
+        <rect x="233" y="35" width="80" height="45" rx="4" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="273" y="61" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="10">F̂(u,v)</text>
+        <!-- IDFT -->
+        <polygon points="317,58 335,51 335,65" fill="#4af0b4"/>
+        <!-- result -->
+        <rect x="339" y="35" width="80" height="45" rx="4" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="379" y="61" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="10">f̂(x,y)</text>
+        <!-- W formula box -->
+        <rect x="430" y="25" width="165" height="70" rx="6" fill="#c44af012" stroke="#c44af040" stroke-width="1"/>
+        <text x="512" y="45" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="9">W(u,v) =</text>
+        <text x="512" y="60" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">H*(u,v)</text>
+        <line x1="440" y1="67" x2="585" y2="67" stroke="#e8eaf2" stroke-width="0.5"/>
+        <text x="512" y="82" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">|H|² + Sη/Sf</text>
+        <!-- Labels -->
+        <text x="45" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Degraded input</text>
+        <text x="157" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Freq. domain filter</text>
+        <text x="273" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Filtered spectrum</text>
+        <text x="379" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Restored image</text>
+      </svg>
+      <div class="diagram-cap">Fig 6.1 — Wiener filter pipeline: multiply degraded spectrum by W(u,v), then inverse transform</div>
+    </div>
+
+    <h4>Key Properties of Wiener Filter:</h4>
+    <ul>
+      <li>When <strong>no noise</strong> (Sη = 0): W(u,v) = H*(u,v)/|H(u,v)|² = 1/H(u,v) → reduces to inverse filter</li>
+      <li>At <strong>low H values</strong>: denominator is dominated by K=Sη/Sf → W stays small → noise not amplified</li>
+      <li>At <strong>high H values</strong>: W ≈ 1/H → acts like inverse filter → good frequency restoration</li>
+      <li><strong>Automatically balances</strong> between deblurring and noise suppression based on local SNR</li>
+    </ul>
+  </div>
+
+  <div class="theory-block">
+    <h3>Comparison: Inverse Filter vs Wiener Filter</h3>
+    <table class="comp-table">
+      <tr><th>Aspect</th><th>Inverse Filter</th><th>Wiener Filter</th></tr>
+      <tr><td>Formula</td><td>F̂ = G/H</td><td>F̂ = [H*/(|H|²+K)]·G</td></tr>
+      <tr><td>Noise handling</td><td>Ignores noise</td><td>Accounts for noise statistics</td></tr>
+      <tr><td>At H zeros</td><td>Diverges (→∞)</td><td>Stays bounded (K prevents division by ≈0)</td></tr>
+      <tr><td>Optimality</td><td>Not optimal</td><td>Minimizes MSE — optimal linear filter</td></tr>
+      <tr><td>Parameters needed</td><td>Only H</td><td>H and Sη/Sf (or constant K)</td></tr>
+      <tr><td>Practical use</td><td>Rarely used directly</td><td>Standard choice for restoration</td></tr>
+    </table>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Wiener Filter</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. With a neat block diagram, explain image restoration model. Also differentiate between image enhancement and image restoration.</div>
+      <div class="pyq-meta">June 2022 · Part B Q3 · 10 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Image Restoration Model:</strong><br><br>
+          [Draw block diagram: f(x,y) → H(u,v) → ⊕ (noise η) → g(x,y) → Restoration Filter → f̂(x,y)]<br><br>
+
+          <strong>Mathematical model:</strong><br>
+          Spatial domain: g(x,y) = h(x,y)★f(x,y) + η(x,y)<br>
+          Frequency domain: G(u,v) = H(u,v)·F(u,v) + N(u,v)<br><br>
+
+          <strong>Restoration Goal:</strong> Given g(x,y) and some knowledge of H and N, estimate f̂(x,y) ≈ f(x,y) by applying a restoration filter.<br><br>
+
+          <strong>Wiener Restoration Filter:</strong><br>
+          F̂(u,v) = [H*(u,v)/(|H(u,v)|² + Sη/Sf)] · G(u,v)<br>
+          This minimizes MSE = E{|f(x,y) - f̂(x,y)|²}.<br><br>
+
+          <strong>Enhancement vs. Restoration:</strong>
+          <table class="comp-table" style="font-size:12px">
+            <tr><th>Enhancement</th><th>Restoration</th></tr>
+            <tr><td>Subjective improvement</td><td>Objective, model-based</td></tr>
+            <tr><td>No mathematical model of degradation needed</td><td>Requires knowledge of degradation H and noise N</td></tr>
+            <tr><td>Goal: look better to human eye</td><td>Goal: recover original f(x,y) mathematically</td></tr>
+            <tr><td>Methods: histogram equalization, filtering</td><td>Methods: inverse filtering, Wiener filter</td></tr>
+            <tr><td>No "correct" answer — subjective</td><td>Has an optimal answer (MMSE)</td></tr>
+            <tr><td>Unit 3 topic</td><td>Unit 4 topic</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CONSTRAINED LS -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="constrained">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2 class="section-title">Constrained Least-Squares Filter</h2>
+    <span class="importance-pill badge badge-green">65% · Part B</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Motivation</h3>
+    <p>Wiener filter requires knowledge of Sη/Sf (noise-to-signal ratio) which is often unknown. The <span class="highlight">Constrained Least-Squares (CLS) filter</span> provides an alternative that only requires knowledge of the noise mean and variance (easier to estimate).</p>
+
+    <div class="formula-box">
+      <span class="label">CLS Filter — Frequency Domain</span>
+      <div class="formula">F̂(u,v) = [H*(u,v) / (|H(u,v)|² + γ|P(u,v)|²)] · G(u,v)</div>
+      <div class="note">γ = regularization parameter (tuning constant, adjusted iteratively)</div>
+      <div class="note">P(u,v) = DFT of the Laplacian operator p(x,y) = [[0,-1,0],[-1,4,-1],[0,-1,0]]</div>
+      <div class="note">The Laplacian P acts as a smoothness constraint — penalizes high-frequency roughness in f̂.</div>
+    </div>
+
+    <h4>What P(u,v) Does:</h4>
+    <p>The Laplacian in the denominator enforces <strong>smoothness</strong> in the restored image. This prevents the noisy solution from having wild oscillations. The parameter γ controls the trade-off: larger γ → smoother f̂ (but more blurred). Smaller γ → less smooth (but noise may appear).</p>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">💡</div>
+      <div class="tip-content">
+        <div class="tip-title">CLS vs Wiener — Key Distinction for Exam</div>
+        <p><strong>Wiener filter:</strong> Requires Sη(u,v)/Sf(u,v) — ratio of power spectra (hard to know exactly).<br>
+        <strong>CLS filter:</strong> Only requires noise variance σ²η and mean m̄η (much easier to estimate from a uniform region of the image). Iteratively adjusts γ until ||Hf̂ − g||² = ||η||². More practical when noise stats are all that's available.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- HOMOMORPHIC FILTERING -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="homomorphic">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <h2 class="section-title">Homomorphic Filtering</h2>
+    <span class="importance-pill badge badge-red">🔥 80% · Part B · Repeated!</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>The Problem: Non-Uniform Illumination</h3>
+    <p>Images are often captured under <strong>non-uniform lighting</strong> — some parts brighter, some darker. This makes standard enhancement difficult because different regions need different treatment. Homomorphic filtering solves this by separating the <strong>illumination</strong> (slow, low-frequency) and <strong>reflectance</strong> (fast, high-frequency) components.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>Image Formation Model</h3>
+    <p>Every image f(x,y) can be expressed as a product of two components:</p>
+
+    <div class="formula-box">
+      <span class="label">Image Formation Model</span>
+      <div class="formula">f(x,y) = i(x,y) · r(x,y)</div>
+      <div class="note">i(x,y) = illumination component (0 < i < ∞): overall brightness/lighting — varies slowly (low frequency)</div>
+      <div class="note">r(x,y) = reflectance component (0 < r < 1): texture, color, surface detail — varies quickly (high frequency)</div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-label">📌 Illumination vs Reflectance — Real World</div>
+      <p><strong>Illumination i(x,y):</strong> The light falling on a surface. Sunlight from one side makes the left half of a face brighter. Varies smoothly across the image.</p>
+      <p><strong>Reflectance r(x,y):</strong> How much light the surface reflects. A white shirt reflects more than a black shirt. Contains edge and texture details — varies rapidly.</p>
+      <p><strong>Problem:</strong> We want to compress the range of i (reduce bright/dark disparity) while enhancing r (sharpen details). But they're multiplied — can't just subtract!</p>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Homomorphic Filtering Pipeline — MASTER THIS DIAGRAM!</h3>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 700 180" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="350" y="18" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="11">HOMOMORPHIC FILTERING PIPELINE</text>
+
+        <!-- f(x,y) -->
+        <rect x="10" y="40" width="70" height="45" rx="4" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="45" y="61" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="9">f(x,y)</text>
+        <text x="45" y="75" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">= i·r</text>
+        <text x="45" y="97" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">input</text>
+        <polygon points="84,63 100,56 100,70" fill="#c44af0"/>
+
+        <!-- ln -->
+        <rect x="104" y="40" width="60" height="45" rx="4" fill="#1c2130" stroke="#c44af0" stroke-width="1.5"/>
+        <text x="134" y="61" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="11">ln</text>
+        <text x="134" y="75" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">log</text>
+        <text x="45" y="115" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">f = i·r</text>
+        <text x="134" y="115" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="8">ln(f) =</text>
+        <text x="134" y="125" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="8">ln(i)+ln(r)</text>
+        <polygon points="168,63 184,56 184,70" fill="#c44af0"/>
+
+        <!-- DFT -->
+        <rect x="188" y="40" width="60" height="45" rx="4" fill="#1c2130" stroke="#f0c44a" stroke-width="1.5"/>
+        <text x="218" y="61" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">DFT</text>
+        <text x="218" y="75" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">ℱ</text>
+        <text x="218" y="115" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="8">Z(u,v)</text>
+        <polygon points="252,63 268,56 268,70" fill="#f0c44a"/>
+
+        <!-- H(u,v) filter -->
+        <rect x="272" y="40" width="100" height="45" rx="4" fill="#1c2130" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="322" y="57" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">H(u,v) Filter</text>
+        <text x="322" y="72" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">γL&lt;1, γH&gt;1</text>
+        <text x="322" y="115" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">S(u,v)=H·Z</text>
+        <polygon points="376,63 392,56 392,70" fill="#f04a7a"/>
+
+        <!-- IDFT -->
+        <rect x="396" y="40" width="65" height="45" rx="4" fill="#1c2130" stroke="#f0c44a" stroke-width="1.5"/>
+        <text x="428" y="61" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">IDFT</text>
+        <text x="428" y="75" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">ℱ⁻¹</text>
+        <text x="428" y="115" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="8">g'(x,y)</text>
+        <polygon points="465,63 481,56 481,70" fill="#4af0b4"/>
+
+        <!-- exp -->
+        <rect x="485" y="40" width="60" height="45" rx="4" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="515" y="61" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="11">e^x</text>
+        <text x="515" y="75" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">exp</text>
+        <text x="515" y="115" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="8">exp undo ln</text>
+        <polygon points="549,63 565,56 565,70" fill="#4af0b4"/>
+
+        <!-- g(x,y) output -->
+        <rect x="569" y="40" width="70" height="45" rx="4" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="604" y="61" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">g(x,y)</text>
+        <text x="604" y="75" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">enhanced</text>
+        <text x="604" y="97" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">output</text>
+
+        <!-- Result annotation -->
+        <rect x="272" y="135" width="330" height="35" rx="4" fill="#f04a7a12" stroke="#f04a7a30" stroke-width="1"/>
+        <text x="437" y="150" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">γL: attenuates illumination (low freq)</text>
+        <text x="437" y="163" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="8">γH: amplifies reflectance (high freq)</text>
+      </svg>
+      <div class="diagram-cap">Fig 8.1 — Homomorphic Filtering: ln converts product to sum → DFT → filter → IDFT → exp</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Mathematical Derivation — Step by Step</h3>
+
+    <div class="steps">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Take natural log:</strong> ln[f(x,y)] = ln[i(x,y)] + ln[r(x,y)]
+      This converts the product into a SUM — now the two components are additive and can be processed separately.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Take DFT:</strong> Z(u,v) = DFT{ln[f(x,y)]} = Fi(u,v) + Fr(u,v)
+      Fi = DFT of ln(i) → concentrated at low frequencies. Fr = DFT of ln(r) → spread over high frequencies.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>Apply Homomorphic Filter H(u,v):</strong> S(u,v) = H(u,v)·Z(u,v)
+      The filter has: γL < 1 (attenuates low frequencies = reduces illumination variation) and γH > 1 (boosts high frequencies = enhances reflectance/detail). Typically a modified high-pass filter.</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text"><strong>Take IDFT:</strong> s(x,y) = IDFT{S(u,v)} = s_i(x,y) + s_r(x,y)</div></div>
+      <div class="step-item"><div class="step-num">5</div><div class="step-text"><strong>Take exponential:</strong> g(x,y) = e^{s(x,y)} = e^{s_i(x,y)} · e^{s_r(x,y)} = i₀(x,y)·r₀(x,y)
+      Result: compressed illumination range + enhanced reflectance contrast.</div></div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">Homomorphic Filter Shape H(u,v) — Gaussian Basis</span>
+      <div class="formula">H(u,v) = (γH − γL)[1 − e^{-c(D²(u,v)/D₀²)}] + γL</div>
+      <div class="note">D(u,v) = distance from center. D₀ = cutoff frequency. c = sharpness control.</div>
+      <div class="note">At D=0 (center/DC): H ≈ γL (low value → attenuates illumination)</div>
+      <div class="note">At large D (high freq): H ≈ γH (high value → boosts reflectance)</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Effect of Homomorphic Filtering</h3>
+    <table class="comp-table">
+      <tr><th>Frequency Range</th><th>Component</th><th>Filter Action</th><th>Visual Effect</th></tr>
+      <tr><td>Low (D small)</td><td>Illumination i(x,y)</td><td>γL < 1 → attenuate</td><td>Reduces overall brightness variation; brings dark/bright areas closer</td></tr>
+      <tr><td>High (D large)</td><td>Reflectance r(x,y)</td><td>γH > 1 → amplify</td><td>Sharpens edges, enhances texture and detail</td></tr>
+    </table>
+
+    <div class="tip-box purple">
+      <div class="tip-icon">💡</div>
+      <div class="tip-content">
+        <div class="tip-title">Why "Homomorphic"?</div>
+        <p>The word <em>homomorphic</em> comes from mathematics — a "homomorphism" maps between two algebraic structures. Here, we map from multiplication (f = i·r) to addition (ln f = ln i + ln r) — this is the homomorphism. The log→filter→exp pipeline exploits this mathematical mapping to apply linear filtering (in the log domain) to what is actually a nonlinear (multiplicative) degradation.</p>
+      </div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">⚡</div>
+      <div class="tip-content">
+        <div class="tip-title">Exam Mnemonic — "Lo-GHo-Fo-I-Expo"</div>
+        <p>Remember the homomorphic pipeline as: <strong>Log → Go to Frequency (DFT) → Homomorphic filter → IDFT → Exponential</strong><br>
+        Or just: <strong>ln → DFT → H(u,v) → IDFT → e^x</strong><br>
+        5 steps, always the same order. Draw this as a box diagram — it earns 3-4 marks by itself!</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Homomorphic Filtering</div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What is the need of homomorphic filter in image processing? Explain the steps used in homomorphic filtering with a suitable example.</div>
+      <div class="pyq-meta">June 2023 · Part B Q4 · 4 marks ⭐ REPEATED!</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Need for Homomorphic Filter:</strong><br><br>
+          Images often suffer from non-uniform illumination — bright near a window, dark in corners. Standard filtering cannot fix this because illumination i(x,y) and reflectance r(x,y) are multiplied together: f = i·r. We cannot directly apply a filter to separate them.<br><br>
+          Homomorphic filtering solves this by exploiting the log transformation to convert the multiplicative model into an additive one, where linear filtering CAN be applied separately.<br><br>
+
+          <strong>Steps of Homomorphic Filtering:</strong><br><br>
+          Given f(x,y) = i(x,y)·r(x,y) where:<br>
+          • i(x,y) = illumination (low freq): 0 < i < ∞<br>
+          • r(x,y) = reflectance (high freq): 0 < r < 1<br><br>
+
+          Step 1: Apply natural log:<br>
+          ln[f(x,y)] = ln[i(x,y)] + ln[r(x,y)]<br>
+          Let z(x,y) = ln[f(x,y)]<br><br>
+
+          Step 2: Apply DFT:<br>
+          Z(u,v) = DFT{z(x,y)} = Fi(u,v) + Fr(u,v)<br><br>
+
+          Step 3: Apply Homomorphic Filter H(u,v):<br>
+          S(u,v) = H(u,v)·Z(u,v)<br>
+          H has γL < 1 (attenuates low freq — reduces illumination range)<br>
+          H has γH > 1 (boosts high freq — enhances reflectance/sharpness)<br><br>
+
+          Step 4: Apply IDFT:<br>
+          s(x,y) = IDFT{S(u,v)}<br><br>
+
+          Step 5: Apply exponential:<br>
+          g(x,y) = e^{s(x,y)} = i₀(x,y)·r₀(x,y)<br><br>
+
+          <strong>Result:</strong> g(x,y) has compressed dynamic range (illumination equalized) and enhanced contrast (reflectance sharpened). Dark areas become visible without blowing out bright areas.<br><br>
+
+          <strong>Example:</strong> An X-ray image where bone is very bright and soft tissue is very dark. Homomorphic filtering can bring both into a more balanced visible range simultaneously.
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Describe how homomorphic filtering separates illumination and reflectance components.</div>
+      <div class="pyq-meta">May 2025 · Part B Q4 · 4 marks ⭐ SAME CONCEPT AGAIN!</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Separation of Illumination and Reflectance by Homomorphic Filtering:</strong><br><br>
+          <strong>Image Formation Model:</strong><br>
+          f(x,y) = i(x,y) · r(x,y)<br>
+          i(x,y) = illumination: determined by light source, varies slowly → dominates LOW frequencies<br>
+          r(x,y) = reflectance: determined by surface, varies quickly at edges → dominates HIGH frequencies<br><br>
+
+          <strong>The Problem:</strong> Since they are multiplied (not added), we cannot directly filter them separately.<br><br>
+
+          <strong>Separation Using Log Transform:</strong><br>
+          ln[f(x,y)] = ln[i(x,y)] + ln[r(x,y)]<br>
+          Now they are ADDITIVE! The Fourier transform of ln(f) separates into:<br>
+          • Low-frequency components ≈ DFT{ln(i)} — illumination<br>
+          • High-frequency components ≈ DFT{ln(r)} — reflectance<br><br>
+
+          <strong>Filtering:</strong><br>
+          Apply H(u,v) with γL < 1 (suppress low freq = reduce illumination variation) and γH > 1 (boost high freq = enhance reflectance/detail).<br><br>
+
+          After IDFT and exp(), the result g(x,y) = i₀(x,y)·r₀(x,y) has:<br>
+          • Compressed illumination range (uniform lighting appearance)<br>
+          • Enhanced reflectance (sharper, more detailed texture and edges)<br><br>
+
+          [Draw the 5-stage pipeline: f(x,y) → ln → DFT → H(u,v) → IDFT → exp → g(x,y)]
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MASTER PYQ LIST -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="pyq-master">
+  <div class="section-header">
+    <span class="section-num">✦</span>
+    <h2 class="section-title">All RTU PYQs — Master List</h2>
+    <span class="importance-pill badge badge-red">Complete Reference</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Part A Questions (2 marks) — Unit 4</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>What is the concept of degradation function?</td><td>Degradation Function ⭐</td></tr>
+      <tr><td>2025</td><td>Why is noise always considered to be additive in images?</td><td>Noise Model ⭐</td></tr>
+      <tr><td>2025</td><td>What is the role of Fourier transform in image processing?</td><td>DFT (connects to Unit 3)</td></tr>
+      <tr><td>2024</td><td>(Restoration questions embedded in other units)</td><td>—</td></tr>
+      <tr><td>2023</td><td>Explain the model of image degradation and restoration process in brief.</td><td>Degradation Model ⭐</td></tr>
+      <tr><td>2023</td><td>What do you understand by inverse filtering in image processing?</td><td>Inverse Filtering ⭐</td></tr>
+      <tr><td>2023</td><td>What is wraparound error in frequency domain filtering?</td><td>Wraparound Error ⭐</td></tr>
+      <tr><td>2023</td><td>Explain interpixel and psychovisual redundancies (Unit 5 related).</td><td>—</td></tr>
+      <tr><td>2022</td><td>What is minimum mean square error filtering?</td><td>Wiener/MMSE ⭐</td></tr>
+    </table>
+
+    <h3 style="margin-top:20px">Part B Questions (4 marks) — Unit 4</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>Describe how homomorphic filtering separates illumination and reflectance.</td><td>Homomorphic ⭐⭐</td></tr>
+      <tr><td>2024</td><td>Explain the image restoration technique to remove blur caused by uniform linear motion.</td><td>Motion Blur Restoration ⭐⭐</td></tr>
+      <tr><td>2023</td><td>What is the need of homomorphic filter? Explain steps with suitable example.</td><td>Homomorphic ⭐⭐</td></tr>
+      <tr><td>2022</td><td>Explain image restoration model with diagrams.</td><td>Degradation Model ⭐</td></tr>
+      <tr><td>2022</td><td>What is spatial filtering? Define spatial correlation and convolution with an example.</td><td>Spatial Filtering (Unit 3)</td></tr>
+    </table>
+
+    <h3 style="margin-top:20px">Part C Questions (10 marks) — Unit 4</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2023</td><td>Discuss different types of noise PDF. Explain restoration in presence of noise only. Give examples of linear and non-linear filters.</td><td>Noise PDFs + Filters ⭐⭐⭐</td></tr>
+      <tr><td>2023</td><td>Differences between Gaussian and Impulse noise + noise PDFs.</td><td>Noise Models ⭐⭐</td></tr>
+      <tr><td>2022</td><td>What is noise PDF? Explain Erlang and impulse noise. Differentiate Gaussian and impulse noise.</td><td>Noise Models ⭐⭐</td></tr>
+      <tr><td>2022</td><td>What is image sharpening? Explain first and second order derivatives.</td><td>Sharpening (Unit 3)</td></tr>
+    </table>
+  </div>
+
+  <div class="tip-box purple">
+    <div class="tip-icon">🏆</div>
+    <div class="tip-content">
+      <div class="tip-title">Top 5 Must-Prepare Topics — Unit 4 (Priority Order)</div>
+      <p>
+        <strong>1.</strong> Noise PDFs — all 6 types with formulas + PDF shape descriptions + comparison table<br>
+        <strong>2.</strong> Degradation & Restoration Model — block diagram + both domain equations<br>
+        <strong>3.</strong> Homomorphic Filtering — 5-step pipeline + H(u,v) with γL/γH + reason for log<br>
+        <strong>4.</strong> Wiener Filter — formula F̂=[H*/(|H|²+K)]·G + comparison with inverse filter<br>
+        <strong>5.</strong> Spatial Filters for noise — median for S&P, arithmetic mean for Gaussian, contraharmonic for pepper/salt
+      </p>
+    </div>
+  </div>
+
+  <div class="tip-box validate">
+    <div class="tip-icon">📋</div>
+    <div class="tip-content">
+      <div class="tip-title">Cross-Unit Connections to Mention in Answers</div>
+      <p>
+        <strong>Unit 3 → Unit 4:</strong> Convolution theorem (spatial convolution = frequency multiplication) is WHY we work in frequency domain for restoration.<br>
+        <strong>Unit 3 → Unit 4:</strong> Gaussian filter from Unit 3 = arithmetic mean approximation = noise suppressor here.<br>
+        <strong>Unit 3 → Unit 4:</strong> High-pass filter from Unit 3 is what γH > 1 does in homomorphic filtering.<br>
+        <strong>Unit 4 → Unit 5:</strong> Noise removal (Unit 4) is performed BEFORE compression (Unit 5) to avoid compressing noise artifacts.<br>
+        <strong>Unit 4 → Unit 6:</strong> Restored images give cleaner edges for segmentation (Unit 6).
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<!-- Mobile sidebar toggle button -->
+<button class="sidebar-toggle" id="burgerBtn" onclick="openSidebar()">☰</button>
+
+<script>
+  function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('overlay').classList.add('visible');
+    document.getElementById('burgerBtn').classList.add('open');
+    document.getElementById('burgerBtn').textContent = '✕';
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('visible');
+    document.getElementById('burgerBtn').classList.remove('open');
+    document.getElementById('burgerBtn').textContent = '☰';
+    document.body.style.overflow = '';
+  }
+
+  // Active nav highlight on scroll
+  const sections = document.querySelectorAll('.section');
+  const navItems = document.querySelectorAll('.nav-item');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 100) current = s.id;
+    });
+    navItems.forEach(n => {
+      n.classList.remove('active');
+      if (n.getAttribute('href') === '#' + current) n.classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>

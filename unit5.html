@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIP Unit 5 — Image Compression</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;600;700;800&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2130;
+    --border: #2a3045;
+    --accent: #4af0b4;
+    --accent2: #f0c44a;
+    --accent3: #f04a7a;
+    --accent4: #4a9af0;
+    --text: #e8eaf2;
+    --text-dim: #8892a8;
+    --mono: 'IBM Plex Mono', monospace;
+    --heading: 'Syne', sans-serif;
+    --body: 'Source Serif 4', serif;
+    --sidebar-width: 260px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  /* ── CHAPTER NAV ── */
+  .chapter-nav {
+    background: #080a10;
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .chapter-nav-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 12px 10px 12px 0;
+    white-space: nowrap;
+    border-right: 1px solid var(--border);
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .ch-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 14px;
+    border-radius: 5px;
+    text-decoration: none;
+    color: var(--text-dim);
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .ch-link:hover { color: var(--text); background: var(--surface2); }
+  .ch-link.active { background: var(--surface2); color: var(--accent2); border: 1px solid var(--accent2); }
+
+  /* ── HEADER ── */
+  .hero {
+    background: linear-gradient(135deg, #0d0f14 0%, #1a0f1a 50%, #0f150d 100%);
+    padding: 48px 32px 36px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 39px, #2a304522 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, #2a304522 40px);
+  }
+  .hero-inner { position: relative; max-width: 960px; margin: 0 auto; }
+  .hero-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .hero h1 {
+    font-family: var(--heading);
+    font-size: clamp(26px, 5vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    color: #fff;
+  }
+  .hero h1 span { color: var(--accent2); }
+  .hero-sub {
+    margin-top: 12px;
+    color: var(--text-dim);
+    font-size: 15px;
+    max-width: 580px;
+  }
+  .hero-badges {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid;
+  }
+  .badge-green { color: var(--accent); border-color: var(--accent); background: #4af0b41a; }
+  .badge-yellow { color: var(--accent2); border-color: var(--accent2); background: #f0c44a1a; }
+  .badge-red { color: var(--accent3); border-color: var(--accent3); background: #f04a7a1a; }
+  .badge-blue { color: var(--accent4); border-color: var(--accent4); background: #4a9af01a; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; max-width: 1280px; margin: 0 auto; }
+
+  /* ── SIDEBAR TOGGLE BUTTON (mobile) ── */
+  .sidebar-toggle {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--accent2);
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    color: #000;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(240,196,74,0.4);
+    transition: transform 0.2s;
+  }
+  .sidebar-toggle:hover { transform: scale(1.1); }
+  .sidebar-toggle.open { background: var(--accent3); color: #fff; }
+
+  /* ── SIDEBAR OVERLAY ── */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 98;
+    backdrop-filter: blur(2px);
+  }
+  .sidebar-overlay.visible { display: block; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    padding: 28px 16px;
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 44px;
+    height: calc(100vh - 44px);
+    overflow-y: auto;
+    transition: transform 0.3s ease;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent2);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .sidebar-close {
+    display: none;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 2px 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--heading);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    transition: all 0.2s;
+    margin-bottom: 2px;
+    text-decoration: none;
+  }
+  .nav-item:hover, .nav-item.active {
+    background: var(--surface2);
+    color: var(--text);
+  }
+  .nav-item.active { color: var(--accent2); border-left: 2px solid var(--accent2); }
+  .nav-imp {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--surface2);
+  }
+  .nav-imp.high { color: var(--accent3); }
+  .nav-imp.med { color: var(--accent2); }
+  .nav-imp.low { color: var(--accent); }
+
+  /* ── CONTENT ── */
+  .content {
+    flex: 1;
+    padding: 32px 36px;
+    max-width: calc(100% - var(--sidebar-width));
+    overflow-x: hidden;
+  }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 60px;
+    scroll-margin-top: 60px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .section-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent2);
+    background: #f0c44a15;
+    border: 1px solid #f0c44a40;
+    padding: 4px 8px;
+    border-radius: 4px;
+    min-width: 36px;
+    text-align: center;
+  }
+  .section-title {
+    font-family: var(--heading);
+    font-size: clamp(18px, 3vw, 22px);
+    font-weight: 800;
+    color: #fff;
+  }
+  .importance-pill {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  /* ── THEORY BLOCKS ── */
+  .theory-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 20px;
+  }
+  .theory-block h3 {
+    font-family: var(--heading);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 12px;
+  }
+  .theory-block p { margin-bottom: 10px; color: var(--text); }
+  .theory-block p:last-child { margin-bottom: 0; }
+
+  /* ── FORMULA BLOCK ── */
+  .formula-box {
+    background: #0a0e18;
+    border: 1px solid var(--accent4);
+    border-left: 3px solid var(--accent4);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent4);
+    overflow-x: auto;
+  }
+  .formula-box .label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .formula-box .formula { color: #a8d4ff; }
+  .formula-box .note { color: var(--text-dim); font-size: 12px; margin-top: 8px; }
+
+  /* ── TIPS ── */
+  .tip-box {
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 14px 0;
+    display: flex;
+    gap: 12px;
+  }
+  .tip-box.trick { background: #f0c44a12; border: 1px solid #f0c44a40; }
+  .tip-box.validate { background: #4af0b412; border: 1px solid #4af0b440; }
+  .tip-box.connect { background: #4a9af012; border: 1px solid #4a9af040; }
+  .tip-box.warning { background: #f04a7a12; border: 1px solid #f04a7a40; }
+  .tip-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+  .tip-content { flex: 1; }
+  .tip-title {
+    font-family: var(--heading);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .tip-box.trick .tip-title { color: var(--accent2); }
+  .tip-box.validate .tip-title { color: var(--accent); }
+  .tip-box.connect .tip-title { color: var(--accent4); }
+  .tip-box.warning .tip-title { color: var(--accent3); }
+  .tip-content p { font-size: 14px; color: var(--text); margin: 0; }
+
+  /* ── EXAMPLE BOX ── */
+  .example-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin: 14px 0;
+  }
+  .example-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* ── PYQ BLOCK ── */
+  .pyq-section {
+    background: #07090f;
+    border: 1px solid #f0c44a30;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-top: 24px;
+  }
+  .pyq-header {
+    font-family: var(--heading);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pyq-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .pyq-q {
+    font-family: var(--heading);
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .pyq-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  .pyq-answer { font-size: 14px; line-height: 1.8; }
+  .pyq-toggle {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent2);
+    margin-top: 10px;
+    transition: all 0.2s;
+  }
+  .pyq-toggle:hover { background: var(--accent2); color: #000; }
+  .answer-content { display: none; margin-top: 14px; }
+  .answer-content.open { display: block; }
+
+  /* ── TABLE ── */
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+    overflow-x: auto;
+    display: block;
+  }
+  .comp-table th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: left;
+    font-family: var(--heading);
+    font-weight: 700;
+    color: var(--accent2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .comp-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .comp-table tr:last-child td { border-bottom: none; }
+  .comp-table tr:hover td { background: var(--surface2); }
+
+  /* ── STEPS ── */
+  .steps { margin: 14px 0; }
+  .step-item {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+  .step-num {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 50%;
+    background: var(--accent2);
+    color: #000;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-text { font-size: 15px; padding-top: 4px; }
+
+  /* ── HUFFMAN TREE ── */
+  .huff-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-family: var(--mono);
+    margin: 12px 0;
+  }
+  .huff-table th {
+    background: #1c2130;
+    padding: 8px 12px;
+    color: var(--accent2);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .huff-table td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    text-align: center;
+    vertical-align: middle;
+  }
+  .huff-table .highlight-row td { background: #f0c44a15; color: var(--accent2); }
+  .huff-table .combined td { background: #4af0b410; color: var(--accent); }
+
+  /* ── ARITH TABLE ── */
+  .arith-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-family: var(--mono);
+    margin: 12px 0;
+  }
+  .arith-table th {
+    background: #1c2130;
+    padding: 8px 12px;
+    color: var(--accent4);
+    border: 1px solid var(--border);
+  }
+  .arith-table td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .arith-table .step-row td { background: #4a9af012; }
+
+  /* ── IMPORTANCE BAR ── */
+  .imp-bar-wrap { margin-bottom: 8px; }
+  .imp-bar-label { font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .imp-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .imp-bar-fill { height: 100%; border-radius: 3px; }
+  .imp-high .imp-bar-fill { background: var(--accent3); }
+  .imp-med .imp-bar-fill { background: var(--accent2); }
+  .imp-low .imp-bar-fill { background: var(--accent); }
+
+  /* ── DIAGRAM ── */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    text-align: center;
+    overflow-x: auto;
+  }
+  .diagram-cap {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  code {
+    font-family: var(--mono);
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: var(--accent4);
+  }
+  pre {
+    background: #070a10;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    margin: 12px 0;
+    line-height: 1.6;
+  }
+
+  ul, ol { padding-left: 20px; margin: 10px 0; }
+  li { margin-bottom: 6px; font-size: 15px; }
+  .highlight { color: var(--accent2); font-weight: 600; }
+  .hl-green { color: var(--accent); }
+  .hl-red { color: var(--accent3); }
+  h4 {
+    font-family: var(--heading);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 16px 0 8px;
+  }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* ── MOBILE ── */
+  @media (max-width: 768px) {
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      z-index: 99;
+      background: var(--bg);
+      transform: translateX(-100%);
+      border-right: 1px solid var(--border);
+    }
+    .sidebar.open {
+      transform: translateX(0);
+      box-shadow: 4px 0 30px rgba(0,0,0,0.8);
+    }
+    .sidebar-close { display: block; }
+    .sidebar-toggle { display: flex; }
+    .content { max-width: 100%; padding: 20px 16px; }
+    .hero { padding: 32px 20px 28px; }
+    .chapter-nav { padding: 0 12px; }
+    .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .importance-pill { margin-left: 0; }
+    .theory-block { padding: 16px; }
+    .pyq-section { padding: 14px; }
+  }
+  @media (min-width: 769px) {
+    .sidebar-toggle { display: none !important; }
+    .sidebar-overlay { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Chapter Navigation -->
+<nav class="chapter-nav">
+  <span class="chapter-nav-label">DIP · RTU</span>
+  <a class="ch-link active" href="unit5.html">📦 Unit 5: Compression</a>
+  <a class="ch-link" href="unit6.html">🔍 Unit 6: Segmentation</a>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-tag">📚 B.Tech VI Sem · RTU Exam Prep · Digital Image Processing</div>
+    <h1>Unit 5: Image<br><span>Compression</span></h1>
+    <p class="hero-sub">Complete exam-ready guide with Huffman, Arithmetic, LZW, JPEG numericals, all PYQ solutions (2022–2025), tricks and topic ratings.</p>
+    <div class="hero-badges">
+      <span class="badge badge-red">🔥 High Priority</span>
+      <span class="badge badge-yellow">RTU PYQs Solved</span>
+      <span class="badge badge-green">Numericals Inside</span>
+      <span class="badge badge-blue">Unit Connections</span>
+    </div>
+  </div>
+</div>
+
+<!-- Sidebar Overlay -->
+<div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">Topics</span>
+    <button class="sidebar-close" onclick="closeSidebar()">✕ Close</button>
+  </div>
+  <a class="nav-item active" href="#overview" onclick="closeSidebar()">📊 Overview & Importance</a>
+  <a class="nav-item" href="#basics" onclick="closeSidebar()">🧠 Why Compression?</a>
+  <a class="nav-item" href="#redundancy" onclick="closeSidebar()">♻️ Types of Redundancy<span class="nav-imp high">90%</span></a>
+  <a class="nav-item" href="#metrics" onclick="closeSidebar()">📏 Metrics & Ratios<span class="nav-imp high">85%</span></a>
+  <a class="nav-item" href="#huffman" onclick="closeSidebar()">🌳 Huffman Coding<span class="nav-imp high">95%</span></a>
+  <a class="nav-item" href="#arithmetic" onclick="closeSidebar()">🔢 Arithmetic Coding<span class="nav-imp high">95%</span></a>
+  <a class="nav-item" href="#lzw" onclick="closeSidebar()">📖 LZW Coding<span class="nav-imp med">80%</span></a>
+  <a class="nav-item" href="#rle" onclick="closeSidebar()">▬ Run-Length Encoding<span class="nav-imp med">70%</span></a>
+  <a class="nav-item" href="#lossy" onclick="closeSidebar()">📉 Lossy Compression<span class="nav-imp med">75%</span></a>
+  <a class="nav-item" href="#jpeg" onclick="closeSidebar()">🖼️ JPEG Compression<span class="nav-imp high">90%</span></a>
+  <a class="nav-item" href="#pyq-master" onclick="closeSidebar()">📝 All PYQs Master List</a>
+</nav>
+
+<!-- CONTENT -->
+<main class="content">
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- OVERVIEW -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="overview">
+  <div class="section-header">
+    <span class="section-num">00</span>
+    <h2 class="section-title">Topic Importance Analysis</h2>
+  </div>
+
+  <div class="theory-block">
+    <p>Based on RTU PYQs from 2022, 2023, 2024, and 2025, here is the importance of each Unit 5 sub-topic:</p>
+
+    <div class="imp-bar-wrap imp-high" style="margin-top:16px">
+      <div class="imp-bar-label"><span>Huffman Coding (with numerical)</span><span style="color:#f04a7a">95%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:95%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Arithmetic Coding (decode 0.23355 numerical)</span><span style="color:#f04a7a">95%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:95%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Types of Redundancy (Coding, Interpixel, Psychovisual)</span><span style="color:#f04a7a">90%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:90%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>JPEG Compression (DCT-based)</span><span style="color:#f04a7a">90%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:90%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Compression Ratio & Metrics (numerical)</span><span style="color:#f0c44a">85%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:85%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>LZW Coding</span><span style="color:#f0c44a">80%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:80%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Lossy Compression Techniques</span><span style="color:#f0c44a">75%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:75%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Run-Length Encoding</span><span style="color:#4af0b4">70%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:70%"></div></div>
+    </div>
+  </div>
+
+  <div class="tip-box trick">
+    <div class="tip-icon">⚡</div>
+    <div class="tip-content">
+      <div class="tip-title">Exam Strategy</div>
+      <p><strong>Arithmetic coding decode + LZW example</strong> appeared in BOTH 2024 and 2025 — memorize the exact decode procedure for 0.23355. <strong>Huffman coding</strong> with full tree + average code length + entropy appears as a 10-mark Part C question almost every year. These two numericals alone can secure 20–30 marks.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- WHY COMPRESSION -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="basics">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">Why Image Compression?</h2>
+    <span class="importance-pill badge badge-yellow">Conceptual</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>The Size Problem</h3>
+    <p>A standard uncompressed digital image consumes enormous storage. Consider:</p>
+    <ul>
+      <li>A 1024×1024 grayscale image at 8 bits/pixel = <strong>1 MB</strong></li>
+      <li>A 1024×1024 RGB color image = <strong>3 MB</strong></li>
+      <li>A 4K video at 30fps = <strong>~750 MB/second</strong> uncompressed</li>
+    </ul>
+    <p>Image compression reduces this data by exploiting <span class="highlight">redundancy</span> — information that is repeated, predictable, or imperceptible to the human eye.</p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 580 120" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="20" width="120" height="80" rx="8" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="70" y="55" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="10">ORIGINAL</text>
+        <text x="70" y="72" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">1024×1024</text>
+        <text x="70" y="88" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">3 MB</text>
+        <polygon points="138,60 165,50 165,70" fill="#4af0b4"/>
+        <rect x="170" y="25" width="110" height="70" rx="6" fill="#1c2130" stroke="#f0c44a" stroke-width="1.5"/>
+        <text x="225" y="55" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="10">ENCODER</text>
+        <text x="225" y="72" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Remove redundancy</text>
+        <polygon points="288,60 315,50 315,70" fill="#4af0b4"/>
+        <rect x="320" y="20" width="120" height="80" rx="8" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="380" y="55" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="10">COMPRESSED</text>
+        <text x="380" y="72" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">1024×1024</text>
+        <text x="380" y="88" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">300 KB (10:1)</text>
+        <polygon points="448,60 475,50 475,70" fill="#4af0b4"/>
+        <rect x="480" y="25" width="90" height="70" rx="6" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="525" y="55" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="10">DECODER</text>
+        <text x="525" y="72" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Reconstruct</text>
+      </svg>
+      <div class="diagram-cap">Fig 1.1 — Image compression: encoder reduces data, decoder reconstructs image</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Lossless vs. Lossy Compression</h3>
+    <table class="comp-table">
+      <tr><th>Aspect</th><th>Lossless</th><th>Lossy</th></tr>
+      <tr><td>Data recovery</td><td>Perfect reconstruction</td><td>Approximate reconstruction</td></tr>
+      <tr><td>Compression ratio</td><td>2:1 to 10:1</td><td>10:1 to 100:1</td></tr>
+      <tr><td>Examples</td><td>Huffman, LZW, RLE, Arithmetic</td><td>JPEG, MPEG, fractal</td></tr>
+      <tr><td>Use case</td><td>Medical, legal, archival</td><td>Web, streaming, social media</td></tr>
+      <tr><td>PSNR (quality)</td><td>Infinite (identical)</td><td>Finite (30–45 dB typical)</td></tr>
+    </table>
+  </div>
+
+  <div class="tip-box connect">
+    <div class="tip-icon">🔗</div>
+    <div class="tip-content">
+      <div class="tip-title">Connection to Previous Units</div>
+      <p><strong>Unit 3 (Fourier/DCT):</strong> JPEG compression uses the Discrete Cosine Transform (DCT) — directly from Unit 3's frequency domain analysis. DCT converts spatial data to frequency components; high-frequency components (fine detail) are discarded in lossy compression.<br>
+      <strong>Unit 3 (Histogram Processing):</strong> Probability of each gray level = histogram of the image. These probabilities are used directly in Huffman and arithmetic coding!</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- REDUNDANCY -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="redundancy">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2 class="section-title">Types of Redundancy</h2>
+    <span class="importance-pill badge badge-red">🔥 90% · Part A/B/C</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Overview</h3>
+    <p>Compression works by <strong>removing redundancy</strong>. There are three types of redundancy in digital images:</p>
+    <ol>
+      <li><span class="highlight">Coding Redundancy</span> — Inefficient use of bits in encoding</li>
+      <li><span class="highlight">Interpixel (Spatial/Temporal) Redundancy</span> — Correlation between adjacent pixels</li>
+      <li><span class="highlight">Psychovisual Redundancy</span> — Information the human eye cannot perceive</li>
+    </ol>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ 1. Coding Redundancy</h3>
+    <p>Coding redundancy exists when a code (like 8-bit fixed-length) uses <strong>more bits than necessary</strong>. In an image, some gray levels occur more frequently than others. If frequent values get shorter codes (and rare values get longer codes), fewer total bits are needed.</p>
+
+    <div class="formula-box">
+      <span class="label">Average Code Length</span>
+      <div class="formula">L_avg = Σ p(rₖ) · l(rₖ)</div>
+      <div class="note">p(rₖ) = probability of gray level rₖ, l(rₖ) = code length assigned to rₖ</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">Entropy (Minimum Possible Average Code Length)</span>
+      <div class="formula">H = -Σ p(rₖ) · log₂[p(rₖ)]  bits/pixel</div>
+      <div class="note">Entropy H is the theoretical minimum. Any code with L_avg = H achieves zero coding redundancy.</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">Coding Redundancy</span>
+      <div class="formula">R_coding = L_natural - L_avg</div>
+      <div class="note">L_natural = fixed natural code length (typically 8 bits for 256 gray levels)</div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-label">📌 Example — Coding Redundancy</div>
+      <p>Suppose an image has 4 gray levels with probabilities:</p>
+      <pre>
+Gray level  |  Probability  |  Natural code  |  Huffman code
+  r₀ = 0   |    0.5        |    00          |    0    (1 bit)
+  r₁ = 1   |    0.25       |    01          |    10   (2 bits)
+  r₂ = 2   |    0.125      |    10          |    110  (3 bits)
+  r₃ = 3   |    0.125      |    11          |    111  (3 bits)
+</pre>
+      <p><strong>Natural code:</strong> L_natural = 2 bits/pixel always</p>
+      <p><strong>Huffman code:</strong> L_avg = 0.5×1 + 0.25×2 + 0.125×3 + 0.125×3 = 0.5 + 0.5 + 0.375 + 0.375 = <strong>1.75 bits/pixel</strong></p>
+      <p><strong>Entropy:</strong> H = -(0.5·log₂0.5 + 0.25·log₂0.25 + 0.125·log₂0.125 + 0.125·log₂0.125)<br>
+      = -(0.5×(-1) + 0.25×(-2) + 0.125×(-3) + 0.125×(-3)) = -(-0.5 - 0.5 - 0.375 - 0.375) = <strong>1.75 bits/pixel</strong></p>
+      <p><strong>Coding Redundancy removed:</strong> 2 - 1.75 = <strong>0.25 bits/pixel saved</strong></p>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ 2. Interpixel (Spatial) Redundancy</h3>
+    <p>Adjacent pixels in a typical image tend to have <strong>similar or related values</strong>. In a smooth sky region, pixel values change very little from neighbor to neighbor. This correlation = interpixel redundancy.</p>
+    <p><strong>Types:</strong></p>
+    <ul>
+      <li><span class="highlight">Spatial redundancy:</span> Correlation between neighboring pixels in the same frame</li>
+      <li><span class="highlight">Temporal redundancy:</span> Correlation between corresponding pixels in consecutive video frames (background doesn't change between frames)</li>
+      <li><span class="highlight">Spectral redundancy:</span> Correlation between color channels (R, G, B values of the same pixel are often similar)</li>
+    </ul>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">💡</div>
+      <div class="tip-content">
+        <div class="tip-title">Quick Definition for Exam</div>
+        <p>Interpixel redundancy: <em>"The correlation (statistical dependence) between neighboring pixels in a digital image. Adjacent pixels in smooth regions take similar values, making their individual storage redundant."</em> Methods to exploit it: Run-Length Encoding (RLE), predictive coding, transform coding (DCT/JPEG).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ 3. Psychovisual Redundancy</h3>
+    <p>The <span class="highlight">Human Visual System (HVS)</span> does not perceive all visual information with equal sensitivity. Some information is redundant from the viewer's perspective — it can be removed without significantly affecting <em>perceived</em> image quality.</p>
+    <p><strong>Characteristics of HVS that cause psychovisual redundancy:</strong></p>
+    <ul>
+      <li><strong>Brightness sensitivity:</strong> HVS is more sensitive to brightness changes than color changes</li>
+      <li><strong>Contrast sensitivity:</strong> HVS is less sensitive to high-frequency spatial patterns in uniform regions</li>
+      <li><strong>Weber's Law:</strong> JND (Just Noticeable Difference) is proportional to background luminance — brighter areas can tolerate more quantization noise</li>
+      <li><strong>Masking effect:</strong> Fine details in textured areas are harder to perceive than in smooth areas</li>
+    </ul>
+    <p>This is exploited in <strong>lossy compression</strong> — discard what the eye can't see. JPEG uses psychovisual redundancy via its quantization table.</p>
+
+    <div class="tip-box warning">
+      <div class="tip-icon">⚠️</div>
+      <div class="tip-content">
+        <div class="tip-title">Key Difference for Exam</div>
+        <p>Coding redundancy = <strong>mathematical/statistical</strong> redundancy (fixable by better coding). Interpixel redundancy = <strong>structural</strong> redundancy (fixable by predictive/transform coding). Psychovisual redundancy = <strong>perceptual</strong> redundancy (only removable in lossy compression, information is permanently lost).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Redundancy</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What is data redundancy? Explain coding redundancy, interpixel redundancy, and psychovisual redundancy with examples.</div>
+      <div class="pyq-meta">June 2022 · Part B Q4 · 10 marks | Also: 2024 Part C Q2, 2025 Part A Q10</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Data Redundancy in Image Compression:</strong><br>
+          If b represents bits in original image and b' in compressed image, then:<br>
+          Compression ratio: Cr = b/b'<br>
+          Relative redundancy: Rd = 1 - 1/Cr = 1 - b'/b<br><br>
+          When Cr = 1 → Rd = 0 (no redundancy). When Cr >> 1 → Rd → 1 (high redundancy).<br><br>
+
+          <strong>1. Coding Redundancy:</strong><br>
+          Standard 8-bit coding assigns equal 8 bits to every gray level regardless of frequency. A natural image typically has a non-uniform histogram — some gray levels appear much more than others. Using variable-length codes (shorter for frequent values, longer for rare ones) reduces the average code length.<br>
+          Example: If gray level 0 (black) occurs 50% of the time and gets a 1-bit code instead of 8-bit, we save 7 bits for half the pixels.<br>
+          Measured by: L_avg = Σ p(rₖ)·l(rₖ) vs entropy H = -Σ p(rₖ)·log₂[p(rₖ)]<br><br>
+
+          <strong>2. Interpixel Redundancy:</strong><br>
+          Adjacent pixels are statistically correlated (neighboring pixels in sky, grass, wall tend to have similar values). Storing each pixel independently ignores this correlation.<br>
+          Example: Row of 100 pixels all with value 150: storing 100 individual values is redundant; store "150 repeated 100 times" instead (RLE).<br>
+          Removal methods: Run-length encoding, differential coding, transform coding (DCT).<br><br>
+
+          <strong>3. Psychovisual Redundancy:</strong><br>
+          The HVS has limited ability to detect fine spatial details, especially in textured regions or bright areas. Information imperceptible to the eye is psychovisually redundant.<br>
+          Example: A 256-level grayscale region where neighboring levels 127 and 128 cannot be distinguished can be quantized to fewer levels without visible degradation.<br>
+          Removal method: Quantization (used in lossy JPEG). Once removed, this information cannot be recovered.
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What is the relation between relative data redundancy and compression ratio? Calculate average bits/pixel for the given encoded image.</div>
+      <div class="pyq-meta">June 2023 · Part B Q5 · 4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Relation between Cr and Rd:</strong><br>
+          If b = original bits per pixel (natural code), b' = compressed average bits per pixel:<br>
+          Compression Ratio: Cr = b/b'<br>
+          Relative Data Redundancy: Rd = 1 - 1/Cr = 1 - b'/b<br>
+          When Cr = 10 → Rd = 1 - 1/10 = 0.9 (90% of data is redundant)<br><br>
+
+          <strong>Average bits/pixel calculation (from given table):</strong>
+          <table class="comp-table" style="font-size:12px">
+            <tr><th>Gray value rₖ</th><th>Prob. P(rₖ)</th><th>Code Word</th><th>Code Length l(rₖ)</th><th>P×l</th></tr>
+            <tr><td>85</td><td>0.25</td><td>01</td><td>2</td><td>0.50</td></tr>
+            <tr><td>130</td><td>0.40</td><td>1</td><td>1</td><td>0.40</td></tr>
+            <tr><td>180</td><td>0.25</td><td>000</td><td>3</td><td>0.75</td></tr>
+            <tr><td>255</td><td>0.10</td><td>001</td><td>3</td><td>0.30</td></tr>
+          </table>
+          <strong>L_avg = Σ P(rₖ)·l(rₖ) = 0.50 + 0.40 + 0.75 + 0.30 = 1.95 bits/pixel</strong><br><br>
+          Natural code: b = log₂(4) = 2 bits/pixel<br>
+          Compression ratio: Cr = 2/1.95 = <strong>1.026</strong><br>
+          Relative redundancy: Rd = 1 - 1/1.026 = <strong>0.025 (2.5%)</strong><br><br>
+          Entropy: H = -(0.25·log₂0.25 + 0.40·log₂0.40 + 0.25·log₂0.25 + 0.10·log₂0.10)<br>
+          = -(0.25×(-2) + 0.40×(-1.322) + 0.25×(-2) + 0.10×(-3.322))<br>
+          = -(-0.5 - 0.529 - 0.5 - 0.332) = <strong>1.861 bits/pixel</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- METRICS -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="metrics">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2 class="section-title">Compression Metrics & Formulas</h2>
+    <span class="importance-pill badge badge-red">85% · Essential Formulas</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>All Key Formulas (Memorise These!)</h3>
+
+    <div class="formula-box">
+      <span class="label">1. Compression Ratio</span>
+      <div class="formula">Cr = b / b'  =  (original bits) / (compressed bits)</div>
+      <div class="note">Also written as n₁/n₂ or input_bits/output_bits. Higher = better compression.</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">2. Relative Data Redundancy</span>
+      <div class="formula">Rd = 1 - 1/Cr  =  1 - b'/b</div>
+      <div class="note">Range: [0, 1]. Rd=0 → no redundancy removed. Rd→1 → maximum compression. Rd=0.9 means 90% of data was redundant.</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">3. Average Code Length</span>
+      <div class="formula">L_avg = Σ p(rₖ) · l(rₖ)  bits/pixel</div>
+      <div class="note">Sum over all K gray levels. For natural code: L_natural = log₂(K) for K gray levels.</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">4. Entropy (Shannon)</span>
+      <div class="formula">H = -Σ p(rₖ) · log₂[p(rₖ)]  bits/pixel</div>
+      <div class="note">Theoretical minimum average code length. L_avg ≥ H always.</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">5. Coding Efficiency</span>
+      <div class="formula">η = H / L_avg × 100%</div>
+      <div class="note">Huffman code achieves η closest to 100%. Natural code: η = H/L_natural (often 50–80%).</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">6. Coding Redundancy</span>
+      <div class="formula">R_coding = L_natural - L_avg  (bits saved per pixel)</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">7. MSE and PSNR (Image Quality after Lossy Compression)</span>
+      <div class="formula">MSE = (1/MN) · Σ Σ [f(x,y) - f̂(x,y)]²</div>
+      <div class="formula" style="margin-top:8px">PSNR = 10 · log₁₀(255² / MSE)  dB</div>
+      <div class="note">f = original, f̂ = reconstructed. Higher PSNR = better quality. PSNR > 30dB is generally acceptable.</div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">🧠</div>
+      <div class="tip-content">
+        <div class="tip-title">Quick Entropy Calculation Trick</div>
+        <p>For common probabilities, memorize these log₂ values:<br>
+        log₂(0.5) = -1 | log₂(0.25) = -2 | log₂(0.125) = -3 | log₂(0.0625) = -4<br>
+        For others: log₂(x) = ln(x)/ln(2) ≈ log₁₀(x)/0.301<br>
+        log₂(0.4) = log₁₀(0.4)/0.301 = (-0.398)/0.301 ≈ -1.322<br>
+        log₂(0.3) ≈ -1.737 | log₂(0.2) ≈ -2.322 | log₂(0.1) ≈ -3.322</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- HUFFMAN CODING -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="huffman">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2 class="section-title">Huffman Coding</h2>
+    <span class="importance-pill badge badge-red">🔥 95% — Most Asked Numerical</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Core Idea</h3>
+    <p><span class="highlight">Huffman Coding</span> is a lossless, variable-length coding technique that assigns the <strong>shortest codes to the most frequent symbols</strong>. It produces an optimal prefix-free code — no codeword is a prefix of another.</p>
+    <p><strong>Key property:</strong> Huffman coding minimizes the average code length L_avg. It achieves L_avg = H (entropy) when all probabilities are negative powers of 2 (0.5, 0.25, 0.125, etc.).</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>Algorithm (must memorise for exam!)</h3>
+    <div class="steps">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">List all symbols sorted by probability in <strong>descending</strong> order.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Combine the <strong>two symbols with lowest probability</strong> into a new combined node. Its probability = sum of the two.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">Re-sort the list (insert combined node in correct position).</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">Repeat steps 2–3 until only <strong>one node remains</strong> (the root with prob=1.0).</div></div>
+      <div class="step-item"><div class="step-num">5</div><div class="step-text">Trace back from root to each symbol: assign <strong>0 for the larger branch</strong> (or higher probability), <strong>1 for the smaller branch</strong> at each merge.</div></div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">⚡</div>
+      <div class="tip-content">
+        <div class="tip-title">Standard Convention Trick</div>
+        <p>RTU expects you to assign <strong>0 to the higher probability branch</strong> and <strong>1 to the lower</strong> at each split. This is the most common convention. Always state this in your answer. The resulting code is valid as long as it's prefix-free; exact bit assignments may vary but average code length must remain the same.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐ Full RTU Numerical — Huffman Coding (2023 Part B Q3)</h3>
+    <p>Compress the following 4×9 image (values repeated across 4 identical rows) using Huffman coding. Find: (a) Average code length, (b) Coding redundancy, (c) Compression ratio, (d) Entropy.</p>
+
+    <div class="example-box">
+      <div class="example-label">📌 Given Image (4 rows × 9 cols = 36 pixels)</div>
+      <pre>
+  25  25  30  65  100  120  180  240  240
+  25  25  30  65  100  120  180  240  240
+  25  25  30  65  100  120  180  240  240
+  25  25  30  65  100  120  180  240  240
+</pre>
+    </div>
+
+    <h4>Step 1: Find frequencies and probabilities</h4>
+    <table class="huff-table">
+      <tr><th>Symbol (rₖ)</th><th>Count</th><th>Probability p(rₖ)</th><th>Fraction</th></tr>
+      <tr><td>r₁ = 25</td><td>8</td><td>8/36 = 0.2222</td><td>2/9</td></tr>
+      <tr><td>r₂ = 240</td><td>8</td><td>8/36 = 0.2222</td><td>2/9</td></tr>
+      <tr><td>r₃ = 30</td><td>4</td><td>4/36 = 0.1111</td><td>1/9</td></tr>
+      <tr><td>r₄ = 65</td><td>4</td><td>4/36 = 0.1111</td><td>1/9</td></tr>
+      <tr><td>r₅ = 100</td><td>4</td><td>4/36 = 0.1111</td><td>1/9</td></tr>
+      <tr><td>r₆ = 120</td><td>4</td><td>4/36 = 0.1111</td><td>1/9</td></tr>
+      <tr><td>r₇ = 180</td><td>4</td><td>4/36 = 0.1111</td><td>1/9</td></tr>
+    </table>
+    <p>Total = 8+8+4+4+4+4+4 = 36 ✓</p>
+
+    <h4>Step 2: Huffman Tree Construction</h4>
+    <p>Sort by probability descending: 0.222, 0.222, 0.111, 0.111, 0.111, 0.111, 0.111</p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 700 300" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="350" y="18" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="11">Huffman Tree Construction Steps</text>
+        <!-- Step boxes -->
+        <!-- Column headers -->
+        <text x="30" y="38" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Sorted List</text>
+        <text x="30" y="52" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">(prob desc)</text>
+
+        <!-- Round 1 -->
+        <rect x="10" y="60" width="90" height="230" rx="4" fill="#1c2130" stroke="#2a3045" stroke-width="1"/>
+        <text x="55" y="80" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">INITIAL</text>
+        <text x="55" y="100" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">25: 0.222</text>
+        <text x="55" y="118" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">240: 0.222</text>
+        <text x="55" y="136" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">30: 0.111</text>
+        <text x="55" y="154" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">65: 0.111</text>
+        <text x="55" y="172" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">100: 0.111</text>
+        <text x="55" y="190" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">120: 0.111</text>
+        <text x="55" y="208" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">180: 0.111</text>
+        <line x1="55" y1="215" x2="55" y2="225" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="55" y="242" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">Merge ↑</text>
+
+        <!-- Arrow -->
+        <polygon points="105,175 120,168 120,182" fill="#4af0b4"/>
+
+        <!-- Round 2 -->
+        <rect x="125" y="60" width="95" height="230" rx="4" fill="#1c2130" stroke="#2a3045" stroke-width="1"/>
+        <text x="172" y="80" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">ROUND 1</text>
+        <text x="172" y="100" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">25: 0.222</text>
+        <text x="172" y="118" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">240: 0.222</text>
+        <text x="172" y="136" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">[C1]:0.222</text>
+        <text x="172" y="150" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">(120+180)</text>
+        <text x="172" y="172" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">30: 0.111</text>
+        <text x="172" y="190" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">65: 0.111</text>
+        <text x="172" y="208" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">100: 0.111</text>
+
+        <polygon points="225,175 240,168 240,182" fill="#4af0b4"/>
+
+        <!-- Round 3 -->
+        <rect x="245" y="60" width="95" height="230" rx="4" fill="#1c2130" stroke="#2a3045" stroke-width="1"/>
+        <text x="292" y="80" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">ROUND 2</text>
+        <text x="292" y="100" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">25: 0.222</text>
+        <text x="292" y="118" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">240: 0.222</text>
+        <text x="292" y="136" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">[C1]:0.222</text>
+        <text x="292" y="154" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">[C2]:0.222</text>
+        <text x="292" y="168" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">(30+65)</text>
+        <text x="292" y="190" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">100: 0.111</text>
+
+        <polygon points="345,165 360,158 360,172" fill="#4af0b4"/>
+
+        <!-- Round 4 -->
+        <rect x="365" y="60" width="95" height="230" rx="4" fill="#1c2130" stroke="#2a3045" stroke-width="1"/>
+        <text x="412" y="80" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">ROUND 3</text>
+        <text x="412" y="100" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">25: 0.222</text>
+        <text x="412" y="118" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">240: 0.222</text>
+        <text x="412" y="136" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">[C1]:0.222</text>
+        <text x="412" y="154" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">[C3]:0.333</text>
+        <text x="412" y="168" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">(100+C2)</text>
+
+        <polygon points="465,135 480,128 480,142" fill="#4af0b4"/>
+
+        <!-- Round 5 -->
+        <rect x="485" y="60" width="95" height="230" rx="4" fill="#1c2130" stroke="#2a3045" stroke-width="1"/>
+        <text x="532" y="80" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">ROUND 4</text>
+        <text x="532" y="100" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">[C4]:0.444</text>
+        <text x="532" y="114" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">(25+240)</text>
+        <text x="532" y="136" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">[C1]:0.222</text>
+        <text x="532" y="154" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">[C3]:0.333</text>
+        <text x="532" y="180" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">→ merge C1+C3</text>
+        <text x="532" y="200" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">→ merge w C4</text>
+        <text x="532" y="220" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">ROOT: 1.000</text>
+        <text x="532" y="240" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Final: C4+[C1+C3]</text>
+      </svg>
+      <div class="diagram-cap">Fig 4.1 — Huffman tree construction: combine two lowest each round</div>
+    </div>
+
+    <h4>Step 3: Assign Codes (trace back from root)</h4>
+    <p>Building the final tree and assigning codes (0 = larger branch, 1 = smaller):</p>
+    <table class="huff-table">
+      <tr><th>Symbol</th><th>p(rₖ)</th><th>Huffman Code</th><th>Code Length l(rₖ)</th><th>p × l</th></tr>
+      <tr class="highlight-row"><td>r₁ = 25</td><td>0.222</td><td>00</td><td>2</td><td>0.444</td></tr>
+      <tr class="highlight-row"><td>r₂ = 240</td><td>0.222</td><td>01</td><td>2</td><td>0.444</td></tr>
+      <tr><td>r₃ = 120</td><td>0.111</td><td>100</td><td>3</td><td>0.333</td></tr>
+      <tr><td>r₄ = 180</td><td>0.111</td><td>101</td><td>3</td><td>0.333</td></tr>
+      <tr><td>r₅ = 100</td><td>0.111</td><td>110</td><td>3</td><td>0.333</td></tr>
+      <tr><td>r₆ = 30</td><td>0.111</td><td>1110</td><td>4</td><td>0.444</td></tr>
+      <tr><td>r₇ = 65</td><td>0.111</td><td>1111</td><td>4</td><td>0.444</td></tr>
+    </table>
+
+    <h4>Step 4: Calculate Results</h4>
+    <div class="formula-box">
+      <div class="formula">L_avg = Σ p·l = 0.444 + 0.444 + 0.333 + 0.333 + 0.333 + 0.444 + 0.444</div>
+      <div class="formula" style="margin-top:8px">L_avg = <strong>2.778 bits/pixel</strong></div>
+    </div>
+
+    <div class="formula-box">
+      <div class="formula">Entropy H = -Σ p·log₂(p)</div>
+      <div class="formula" style="margin-top:8px">= -(2 × 0.222 × log₂(0.222)) + (5 × 0.111 × log₂(0.111))</div>
+      <div class="formula">log₂(2/9) = log₂(2) - log₂(9) = 1 - 3.170 = -2.170</div>
+      <div class="formula">log₂(1/9) = -log₂(9) = -3.170</div>
+      <div class="formula" style="margin-top:6px">H = -(2 × 0.222 × (-2.170) + 5 × 0.111 × (-3.170))</div>
+      <div class="formula">H = -(-0.964 - 1.759) = <strong>2.723 bits/pixel</strong></div>
+    </div>
+
+    <div class="formula-box">
+      <div class="formula">Natural code length: L_natural = log₂(7) ≈ 2.807 bits (need ≈ 3 bits for 7 levels)</div>
+      <div class="formula" style="margin-top:8px">Compression Ratio (vs 3-bit natural): Cr = 3 / 2.778 = <strong>1.08 : 1</strong></div>
+      <div class="formula" style="margin-top:8px">Coding Efficiency: η = H/L_avg = 2.723/2.778 = <strong>97.9%</strong> (near optimal!)</div>
+      <div class="formula" style="margin-top:8px">Coding Redundancy removed: 3 - 2.778 = <strong>0.222 bits/pixel</strong></div>
+    </div>
+
+    <div class="tip-box validate">
+      <div class="tip-icon">✅</div>
+      <div class="tip-content">
+        <div class="tip-title">Self-Check Criteria for Huffman</div>
+        <p>1. Sum of all probabilities = 1.0 ✓<br>
+        2. Each step: combined probability = sum of two merged ✓<br>
+        3. Final root probability = 1.0 ✓<br>
+        4. No two codewords can be prefix of each other (prefix-free property)<br>
+        5. L_avg ≥ H (code cannot beat entropy)<br>
+        6. Coding efficiency η ≤ 100%</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Huffman Coding</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Compress the 4×8 8-bit image using Huffman coding. Also find: (a) Average code length, (b) Coding redundancy and compression ratio, (c) Entropy.</div>
+      <div class="pyq-meta">June 2023 · Part B Q3 · 4 marks (full solution above in theory section)</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Refer to the complete numerical solution in the theory section above.</strong><br><br>
+          Summary of results:<br>
+          • L_avg = <strong>2.778 bits/pixel</strong> (vs 3-bit natural code)<br>
+          • Compression Ratio Cr = 3/2.778 = <strong>1.08</strong><br>
+          • Relative Redundancy Rd = 1 - 1/1.08 = <strong>0.074 (7.4%)</strong><br>
+          • Entropy H ≈ <strong>2.723 bits/pixel</strong><br>
+          • Coding Efficiency η = 2.723/2.778 = <strong>97.9%</strong><br><br>
+          The Huffman code is nearly optimal (97.9% efficient), meaning only 2.1% improvement is theoretically possible.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- ARITHMETIC CODING -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="arithmetic">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2 class="section-title">Arithmetic Coding</h2>
+    <span class="importance-pill badge badge-red">🔥 95% — Appeared 2024 &amp; 2025 Both!</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Concept</h3>
+    <p><span class="highlight">Arithmetic coding</span> represents an entire <strong>message as a single number</strong> in the range [0, 1). Unlike Huffman coding (which assigns a code to each symbol), arithmetic coding operates on the entire sequence, achieving compression closer to the entropy lower bound.</p>
+    <p><strong>Key idea:</strong> Map the message to a unique sub-interval within [0, 1). The length of this interval decreases as more symbols are encoded. The final code is any number that falls within this interval (represented in binary).</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>Encoding Procedure</h3>
+    <p>Each symbol is assigned a probability range (sub-interval of [0,1)). The intervals are cumulative and non-overlapping.</p>
+    <div class="steps">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Set initial interval [low, high) = [0, 1). Range = 1.0.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">For each symbol in the message, find its probability interval [cum_low, cum_high).</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">New high = old_low + range × cum_high. New low = old_low + range × cum_low. New range = new_high - new_low.</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">After all symbols, pick any number in [low, high) as the code.</div></div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ RTU Numerical — Decode 0.23355 (2023, 2024, 2025!)</h3>
+    <p><strong>Coding model:</strong></p>
+    <table class="arith-table">
+      <tr><th>Symbol</th><th>Probability</th><th>Cumulative Range [low, high)</th></tr>
+      <tr><td>A</td><td>0.2</td><td>[0.0, 0.2)</td></tr>
+      <tr><td>E</td><td>0.3</td><td>[0.2, 0.5)</td></tr>
+      <tr><td>I</td><td>0.1</td><td>[0.5, 0.6)</td></tr>
+      <tr><td>O</td><td>0.2</td><td>[0.6, 0.8)</td></tr>
+      <tr><td>u</td><td>0.1</td><td>[0.8, 0.9)</td></tr>
+      <tr><td>!</td><td>0.1</td><td>[0.9, 1.0)</td></tr>
+    </table>
+
+    <p><strong>Decode: 0.23355</strong></p>
+
+    <div class="example-box">
+      <div class="example-label">📌 Decoding Algorithm — Step by Step</div>
+      <p><strong>Decoding rule:</strong> At each step, find which symbol's range contains the current code value. That is the next decoded symbol. Then rescale: subtract the symbol's low bound and divide by the symbol's width to get the new value.</p>
+
+      <table class="arith-table">
+        <tr><th>Step</th><th>Code Value</th><th>Falls in Range</th><th>Symbol</th><th>Rescaled Value</th><th>Formula</th></tr>
+        <tr class="step-row">
+          <td>1</td>
+          <td>0.23355</td>
+          <td>[0.2, 0.5)</td>
+          <td style="color:var(--accent2);font-weight:bold">E</td>
+          <td>0.11183</td>
+          <td>(0.23355 − 0.2) / 0.3 = 0.11183</td>
+        </tr>
+        <tr class="step-row">
+          <td>2</td>
+          <td>0.11183</td>
+          <td>[0.0, 0.2)</td>
+          <td style="color:var(--accent2);font-weight:bold">A</td>
+          <td>0.55917</td>
+          <td>(0.11183 − 0.0) / 0.2 = 0.55917</td>
+        </tr>
+        <tr class="step-row">
+          <td>3</td>
+          <td>0.55917</td>
+          <td>[0.5, 0.6)</td>
+          <td style="color:var(--accent2);font-weight:bold">I</td>
+          <td>0.59167</td>
+          <td>(0.55917 − 0.5) / 0.1 = 0.59167</td>
+        </tr>
+        <tr class="step-row">
+          <td>4</td>
+          <td>0.59167</td>
+          <td>[0.5, 0.6)</td>
+          <td style="color:var(--accent2);font-weight:bold">I</td>
+          <td>0.91667</td>
+          <td>(0.59167 − 0.5) / 0.1 = 0.91667</td>
+        </tr>
+        <tr class="step-row">
+          <td>5</td>
+          <td>0.91667</td>
+          <td>[0.9, 1.0)</td>
+          <td style="color:var(--accent3);font-weight:bold">! (stop)</td>
+          <td>—</td>
+          <td>! is the end-of-message symbol</td>
+        </tr>
+      </table>
+
+      <p style="margin-top:12px"><strong style="color:var(--accent2)">Decoded message: EAII!</strong></p>
+    </div>
+
+    <div class="tip-box validate">
+      <div class="tip-icon">✅</div>
+      <div class="tip-content">
+        <div class="tip-title">Verify by Encoding "EAII!"</div>
+        <p>Start: [0, 1), range=1.0<br>
+        E [0.2, 0.5): low=0+1.0×0.2=0.2, high=0+1.0×0.5=0.5, range=0.3<br>
+        A [0.0, 0.2): low=0.2+0.3×0.0=0.2, high=0.2+0.3×0.2=0.26, range=0.06<br>
+        I [0.5, 0.6): low=0.2+0.06×0.5=0.23, high=0.2+0.06×0.6=0.236, range=0.006<br>
+        I [0.5, 0.6): low=0.23+0.006×0.5=0.233, high=0.23+0.006×0.6=0.2336, range=0.0006<br>
+        ! [0.9, 1.0): low=0.233+0.0006×0.9=<strong>0.23354</strong>, high=0.233+0.0006×1.0=0.2336<br>
+        Final interval: [0.23354, 0.2336). Is 0.23355 ∈ this interval? YES ✓</p>
+      </div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">🧠</div>
+      <div class="tip-content">
+        <div class="tip-title">Rescaling Formula to Memorize</div>
+        <p>At each step: <strong>new_value = (current_value − symbol_low) / symbol_width</strong><br>
+        Where symbol_width = symbol_high − symbol_low = probability of that symbol.<br>
+        This is the SAME as: new_value = (current_value − cum_low) / probability</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Arithmetic Coding</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Decode the arithmetic coded message 0.23355 for the given coding model. Also explain LZW coding with an example and explain Redundancies and their removal methods.</div>
+      <div class="pyq-meta">2024 Part C Q2 · 10 marks | May 2025 Part C Q2 · 10 marks ⭐ SAME QUESTION BOTH YEARS!</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Part 1: Decode 0.23355 → Answer: EAII!</strong><br>
+          (Full step-by-step solution in theory section above — copy that table exactly)<br><br>
+          <strong>Part 2: LZW Coding (see next section for full explanation)</strong><br>
+          LZW builds a dictionary dynamically. Initialize with single-character entries. For input "ABABABAB":<br>
+          Dictionary starts: A=0, B=1, C=2...<br>
+          Process: A→code 0; AB→add to dict (entry 256); B→code 1; BA→add (257); AB→code 256; BAB→add (258); AB→code 256; B→code 1<br>
+          Output codes: 0, 1, 256, 256, 1 (much shorter for repeated patterns)<br><br>
+          <strong>Part 3: Redundancies</strong><br>
+          See Redundancy section above for full answer with examples.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- LZW -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="lzw">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2 class="section-title">LZW Coding (Lempel-Ziv-Welch)</h2>
+    <span class="importance-pill badge badge-yellow">80% · Always with Arithmetic PYQ</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Core Idea</h3>
+    <p><span class="highlight">LZW coding</span> is a lossless, dictionary-based compression algorithm. It does NOT need prior knowledge of symbol probabilities — it <strong>builds the dictionary dynamically</strong> as it processes the input.</p>
+    <p><strong>Key property:</strong> Both encoder and decoder build the SAME dictionary independently — no dictionary transmission needed!</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>LZW Encoding Algorithm</h3>
+    <div class="steps">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Initialize dictionary with all single-character sequences. For a 256-character alphabet, entries 0–255 are pre-filled.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Read characters one at a time. Build string P = current longest match in dictionary.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">When P + next_char (= PC) is NOT in dictionary: output code for P, add PC to dictionary, set P = next_char.</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">When P + next_char IS in dictionary: set P = PC and continue reading.</div></div>
+      <div class="step-item"><div class="step-num">5</div><div class="step-text">At end of input: output code for P.</div></div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐ LZW Example — Encode "ABABABAB"</h3>
+    <div class="example-box">
+      <div class="example-label">📌 LZW Encoding Step-by-Step</div>
+      <p><strong>Initial dictionary:</strong> A=65 (or 0), B=66 (or 1) [using 0-indexed for simplicity]</p>
+      <p>Let's use: A=0, B=1. Next available code = 2.</p>
+
+      <table class="arith-table">
+        <tr><th>Step</th><th>P (buffer)</th><th>Next char C</th><th>PC in dict?</th><th>Output</th><th>Add to Dict</th><th>P←</th></tr>
+        <tr class="step-row"><td>1</td><td>—</td><td>A</td><td>—</td><td>—</td><td>—</td><td>A</td></tr>
+        <tr><td>2</td><td>A</td><td>B</td><td>AB? No</td><td>code(A)=0</td><td>AB=2</td><td>B</td></tr>
+        <tr class="step-row"><td>3</td><td>B</td><td>A</td><td>BA? No</td><td>code(B)=1</td><td>BA=3</td><td>A</td></tr>
+        <tr><td>4</td><td>A</td><td>B</td><td>AB? YES (=2)</td><td>—</td><td>—</td><td>AB</td></tr>
+        <tr class="step-row"><td>5</td><td>AB</td><td>A</td><td>ABA? No</td><td>code(AB)=2</td><td>ABA=4</td><td>A</td></tr>
+        <tr><td>6</td><td>A</td><td>B</td><td>AB? YES (=2)</td><td>—</td><td>—</td><td>AB</td></tr>
+        <tr class="step-row"><td>7</td><td>AB</td><td>A</td><td>ABA? YES (=4)</td><td>—</td><td>—</td><td>ABA</td></tr>
+        <tr><td>8</td><td>ABA</td><td>B</td><td>ABAB? No</td><td>code(ABA)=4</td><td>ABAB=5</td><td>B</td></tr>
+        <tr class="step-row"><td>END</td><td>B</td><td>—</td><td>—</td><td>code(B)=1</td><td>—</td><td>—</td></tr>
+      </table>
+      <p style="margin-top:10px"><strong>Output codes: 0, 1, 2, 4, 1</strong> (5 codes for 8 characters)</p>
+      <p><strong>Compression: 8 characters → 5 codes</strong> (37.5% reduction)</p>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>LZW Decoding Algorithm</h3>
+    <div class="steps">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Initialize dictionary same way as encoder (single chars).</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Read first code → output its string. Save as previous string (prevStr).</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">For each next code: if code is IN dictionary → output dict[code]. Add prevStr + first_char(dict[code]) to dictionary. prevStr = dict[code].</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">If code is NOT in dictionary (special case): entry = prevStr + prevStr[0]. Output it. Add to dictionary.</div></div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — LZW</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain LZW coding with an example.</div>
+      <div class="pyq-meta">2024 Part C Q2 · May 2025 Part C Q2 · Always paired with arithmetic coding</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>LZW (Lempel-Ziv-Welch) Coding:</strong><br><br>
+          LZW is a universal lossless data compression algorithm that uses a dynamically built dictionary. It was introduced by Welch (1984) as an improvement to LZ78. Used in GIF, TIFF, PDF.<br><br>
+          <strong>Key Properties:</strong><br>
+          • No prior probability model needed<br>
+          • Both encoder and decoder build the same dictionary from the data stream<br>
+          • Dictionary not transmitted with compressed data<br>
+          • Compresses highly repetitive data well<br><br>
+          <strong>Encoding Algorithm:</strong><br>
+          1. Initialize dictionary with all single character entries<br>
+          2. Read characters; build longest string P matching dictionary<br>
+          3. When P+C not in dictionary: output code(P), add P+C to dict, P←C<br>
+          4. When P+C in dictionary: P←P+C<br><br>
+          <strong>Example for "ABABABAB":</strong><br>
+          (See full step-by-step table in the theory section)<br>
+          Output: 0, 1, 2, 4, 1 (5 codes instead of 8 chars)<br><br>
+          <strong>Advantages:</strong> Fast encoding/decoding, good for repetitive data, widely used (GIF format)<br>
+          <strong>Limitations:</strong> Performance depends on data repetitiveness, less efficient for random/noise-like images
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- RUN-LENGTH ENCODING -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="rle">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2 class="section-title">Run-Length Encoding (RLE)</h2>
+    <span class="importance-pill badge badge-yellow">70% · Part B</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Concept</h3>
+    <p><span class="highlight">Run-Length Encoding (RLE)</span> exploits <strong>interpixel redundancy</strong>. A "run" is a sequence of consecutive pixels with the same gray value. Instead of storing each pixel individually, RLE stores (value, count) pairs.</p>
+
+    <div class="formula-box">
+      <span class="label">RLE Representation</span>
+      <div class="formula">Row = [(v₁, r₁), (v₂, r₂), (v₃, r₃), ...]</div>
+      <div class="note">vᵢ = pixel value (gray level), rᵢ = run length (count of consecutive vᵢ pixels)</div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-label">📌 RLE Example</div>
+      <p><strong>Original row (8 pixels):</strong> 5, 5, 5, 8, 8, 8, 8, 5</p>
+      <p><strong>RLE encoded:</strong> (5, 3), (8, 4), (5, 1) → 3 pairs = 6 values instead of 8</p>
+      <p><strong>Compression for binary image:</strong><br>
+      Row: 0,0,0,0,1,1,1,0,0,1,1,1,1,0 → (4, 3, 2, 4, 1) = 5 counts [just counts since value alternates 0,1,0,1,0]</p>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">💡</div>
+      <div class="tip-content">
+        <div class="tip-title">When is RLE Effective?</div>
+        <p>RLE is best when runs are long (highly repetitive data). For binary (fax) images with long black/white runs → excellent. For natural photographic images with constantly varying intensities → RLE may INCREASE file size (if every pair is different). JPEG does NOT use raw RLE — it uses RLE after DCT+quantization, applied to the zigzag-scanned AC coefficients.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — RLE</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Write notes on Run-Length encoding and Shift codes.</div>
+      <div class="pyq-meta">May 2025 · Part B Q5 · 4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Run-Length Encoding (RLE):</strong><br>
+          RLE compresses consecutive sequences of identical symbols. A sequence of n identical pixels with value v is encoded as the pair (v, n).<br><br>
+          <em>Example:</em> Binary image row: 11111100001111<br>
+          RLE: (1,6), (0,4), (1,4) — 6 numbers instead of 14<br><br>
+          <strong>Applications:</strong> Fax machines (ITU-T T.4), BMP file format, PCX files, initial step in JPEG (for AC coefficients)<br>
+          <strong>Best case:</strong> Long runs → high compression<br>
+          <strong>Worst case:</strong> Alternating values → expansion (1,1),(0,1),(1,1),...<br><br>
+          <strong>Shift Codes:</strong><br>
+          A variable-length RLE variant where run lengths are encoded with shift codes. Short runs (most common) get short codes; long runs get longer codes. Essentially Huffman coding applied to the run-length values.<br>
+          Example: run of 1→code "0"; run of 2→code "10"; run of 3→code "110"; run of 4→code "1110" etc.<br>
+          This further reduces the number of bits compared to fixed-length RLE representation.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- LOSSY COMPRESSION -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="lossy">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <h2 class="section-title">Lossy Compression Techniques</h2>
+    <span class="importance-pill badge badge-yellow">75% · Part B/C</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What is Lossy Compression?</h3>
+    <p>In lossy compression, the reconstructed image f̂(x,y) is <strong>not identical</strong> to the original f(x,y). Some information is permanently discarded — specifically, psychovisually redundant data that the HVS cannot perceive well.</p>
+    <p>Trade-off: <strong>Higher compression ratio</strong> in exchange for <strong>some quality loss</strong>.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>1. Quantization (Core of Lossy Compression)</h3>
+    <p>Mapping a large range of values to a smaller set. The most fundamental lossy operation.</p>
+
+    <div class="formula-box">
+      <span class="label">Scalar Quantization</span>
+      <div class="formula">q(x) = round(x / Δ) × Δ</div>
+      <div class="note">Δ = quantization step size. Larger Δ → more compression, more error.</div>
+    </div>
+
+    <p><strong>Vector Quantization (VQ):</strong> Instead of quantizing individual pixel values, quantize blocks of pixels by mapping them to a nearest "codeword" in a codebook. Better compression than scalar quantization at same quality.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>2. Predictive Coding (DPCM)</h3>
+    <p>Exploit <strong>interpixel redundancy</strong> by predicting each pixel from its neighbors and encoding only the <span class="highlight">prediction error</span> (residual). Errors are much smaller than original values → require fewer bits.</p>
+
+    <div class="formula-box">
+      <span class="label">DPCM (Differential Pulse Code Modulation)</span>
+      <div class="formula">Error: e(x,y) = f(x,y) - f̂(x,y)</div>
+      <div class="note">f̂ = predicted value (e.g., previous pixel). Only e(x,y) is encoded and transmitted.</div>
+    </div>
+
+    <p>If pixels are correlated, prediction errors are small → small values → more compressible. Used in JPEG-LS (lossless variant) and as first step in video compression.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>3. Transform Coding (DCT/Wavelet)</h3>
+    <p>Transform image to frequency domain, then apply <strong>coarser quantization to high-frequency coefficients</strong> (which contribute little to perceived quality).</p>
+    <p>Steps: Partition → Transform (DCT/DWT) → Quantize → Entropy code</p>
+    <p>This is the foundation of JPEG (DCT) and JPEG 2000 (Wavelet).</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>4. Fractal Compression</h3>
+    <p>Based on the observation that different parts of a natural image are <strong>self-similar at different scales</strong>. Encode image as a set of fractal transformations (Iterated Function Systems) that reproduce the image when applied repeatedly.</p>
+    <p><strong>Advantage:</strong> Very high compression, resolution-independent decoding.</p>
+    <p><strong>Disadvantage:</strong> Very slow encoding (searching for self-similar parts is computationally expensive).</p>
+  </div>
+
+  <div class="tip-box connect">
+    <div class="tip-icon">🔗</div>
+    <div class="tip-content">
+      <div class="tip-title">Connection: Lossy Compression ↔ Unit 3 (DCT) & Unit 4 (Quantization)</div>
+      <p>Lossy compression directly combines Unit 3's DCT (frequency domain transform) with quantization (Unit 4's degradation concept in reverse — here we deliberately introduce degradation for compression). The quantization table in JPEG is specifically designed using psychovisual sensitivity data — larger step sizes for high frequencies (less sensitive) and smaller step sizes for low frequencies (more sensitive).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- JPEG COMPRESSION -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="jpeg">
+  <div class="section-header">
+    <span class="section-num">09</span>
+    <h2 class="section-title">JPEG Compression</h2>
+    <span class="importance-pill badge badge-red">🔥 90% · Part C</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Overview</h3>
+    <p>JPEG (Joint Photographic Experts Group) is the most widely used lossy image compression standard. It uses the <span class="highlight">Discrete Cosine Transform (DCT)</span> as its core compression tool, exploiting both interpixel and psychovisual redundancy.</p>
+    <p><strong>Why DCT instead of DFT?</strong></p>
+    <ul>
+      <li>DCT coefficients are real (not complex) — simpler arithmetic</li>
+      <li>DCT has better "energy compaction" — most image energy concentrates in fewer low-frequency DCT coefficients</li>
+      <li>DCT eliminates boundary discontinuity artifacts better than DFT</li>
+      <li>Faster algorithms available (related to FFT)</li>
+    </ul>
+  </div>
+
+  <div class="theory-block">
+    <h3>JPEG Compression Pipeline</h3>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 700 220" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="350" y="18" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="11">JPEG COMPRESSION PIPELINE</text>
+
+        <!-- Step 1 -->
+        <rect x="10" y="35" width="85" height="65" rx="5" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="52" y="60" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="9">IMAGE</text>
+        <text x="52" y="74" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">f(x,y)</text>
+        <text x="52" y="90" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">8-bit gray</text>
+        <polygon points="98,68 112,62 112,74" fill="#4af0b4"/>
+
+        <!-- Step 2 -->
+        <rect x="115" y="35" width="85" height="65" rx="5" fill="#1c2130" stroke="#f0c44a" stroke-width="1.5"/>
+        <text x="157" y="56" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">BLOCK</text>
+        <text x="157" y="70" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">SPLIT</text>
+        <text x="157" y="86" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">8×8 blocks</text>
+        <text x="157" y="108" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">shift: -128</text>
+        <polygon points="203,68 217,62 217,74" fill="#4af0b4"/>
+
+        <!-- Step 3 -->
+        <rect x="220" y="35" width="85" height="65" rx="5" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="262" y="56" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">2D-DCT</text>
+        <text x="262" y="70" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">F(u,v)</text>
+        <text x="262" y="86" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">64 coeff.</text>
+        <text x="262" y="108" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">per block</text>
+        <polygon points="308,68 322,62 322,74" fill="#4af0b4"/>
+
+        <!-- Step 4 -->
+        <rect x="325" y="35" width="85" height="65" rx="5" fill="#1c2130" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="367" y="56" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">QUANT-</text>
+        <text x="367" y="70" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">IZATION</text>
+        <text x="367" y="86" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">÷ Q table</text>
+        <text x="367" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">round()</text>
+        <polygon points="413,68 427,62 427,74" fill="#4af0b4"/>
+
+        <!-- Step 5 -->
+        <rect x="430" y="35" width="85" height="65" rx="5" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="472" y="56" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="9">ZIGZAG</text>
+        <text x="472" y="70" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">SCAN</text>
+        <text x="472" y="86" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">DC+AC</text>
+        <text x="472" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">ordering</text>
+        <polygon points="518,68 532,62 532,74" fill="#4af0b4"/>
+
+        <!-- Step 6 -->
+        <rect x="535" y="35" width="85" height="65" rx="5" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="577" y="56" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">ENTROPY</text>
+        <text x="577" y="70" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">CODING</text>
+        <text x="577" y="86" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Huffman</text>
+        <text x="577" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">RLE+VLC</text>
+
+        <!-- Bottom labels -->
+        <text x="52" y="135" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Original</text>
+        <text x="157" y="135" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="8">Partition</text>
+        <text x="262" y="135" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="8">Frequency</text>
+        <text x="367" y="135" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">Lossy step!</text>
+        <text x="472" y="135" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Reorder</text>
+        <text x="577" y="135" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Lossless</text>
+
+        <!-- Zigzag pattern diagram -->
+        <rect x="200" y="155" width="300" height="55" rx="4" fill="#1c2130" stroke="#2a3045" stroke-width="1"/>
+        <text x="350" y="172" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">Zigzag Scan — Low freq → High freq</text>
+        <text x="210" y="190" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">DC(0,0) → F(0,1) → F(1,0) → F(2,0) → F(1,1) → F(0,2) → ... → F(7,7)</text>
+        <text x="210" y="203" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">High-freq end has many zeros after quantization → RLE compresses efficiently</text>
+      </svg>
+      <div class="diagram-cap">Fig 9.1 — JPEG compression pipeline: 6 stages from image to compressed bitstream</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Stage-by-Stage Explanation</h3>
+
+    <h4>Stage 1: Color Space Conversion (for color images)</h4>
+    <p>RGB → YCbCr. The Y (luminance) channel is compressed less than Cb/Cr (chrominance) channels because the HVS is more sensitive to luminance detail. Chrominance channels are often subsampled 2:1 (4:2:0 or 4:2:2 subsampling).</p>
+
+    <h4>Stage 2: Block Splitting + Level Shifting</h4>
+    <p>Image is divided into non-overlapping <strong>8×8 pixel blocks</strong>. Each pixel is level-shifted by subtracting 128 (for 8-bit images), centering values around 0 (range: -128 to +127). This improves DCT performance.</p>
+
+    <h4>Stage 3: 2D Discrete Cosine Transform (DCT)</h4>
+
+    <div class="formula-box">
+      <span class="label">2D DCT Formula for 8×8 block</span>
+      <div class="formula">F(u,v) = (1/4)·C(u)·C(v) · Σₓ Σᵧ f(x,y)·cos[(2x+1)uπ/16]·cos[(2y+1)vπ/16]</div>
+      <div class="note">C(u) = 1/√2 if u=0, else 1. x,y = spatial coordinates (0–7). u,v = frequency coordinates (0–7).</div>
+      <div class="note">F(0,0) = DC coefficient (average of block). F(u,v) for u,v>0 = AC coefficients (variations).</div>
+    </div>
+
+    <p>After DCT, most image energy concentrates in <strong>low-frequency coefficients</strong> (top-left of F(u,v) matrix). High-frequency coefficients are near zero for smooth image regions.</p>
+
+    <h4>Stage 4: Quantization (Lossy Step!)</h4>
+    <div class="formula-box">
+      <span class="label">Quantization</span>
+      <div class="formula">F̂(u,v) = round[ F(u,v) / Q(u,v) ]</div>
+      <div class="note">Q(u,v) = quantization step from JPEG standard quantization table. Larger Q → coarser quantization → more loss.</div>
+    </div>
+
+    <p>The JPEG quantization table has <strong>larger values for high frequencies</strong> (more aggressive quantization of high-frequency detail, which is less visible to the HVS) and smaller values for low frequencies.</p>
+
+    <div class="example-box">
+      <div class="example-label">📌 JPEG Standard Luminance Quantization Table (partial)</div>
+      <pre>
+  16  11  10  16  24  40  51  61
+  12  12  14  19  26  58  60  55
+  14  13  16  24  40  57  69  56
+  14  17  22  29  51  87  80  62
+  18  22  37  56  68 109 103  77
+  ...
+</pre>
+      <p style="margin-top:6px;font-size:13px">Notice: top-left (low freq) = 16; bottom-right (high freq) = up to 109. High-frequency DCT coefficients get divided by much larger values → rounded to zero → compressed away.</p>
+    </div>
+
+    <h4>Stage 5: Zigzag Scanning</h4>
+    <p>The 8×8 quantized DCT matrix is scanned in a <strong>zigzag pattern</strong> — starting from DC coefficient (0,0), going through frequencies in order of increasing frequency. This groups the zeros (which come from high-frequency quantization) together at the end of the 64-element sequence.</p>
+
+    <h4>Stage 6: Entropy Coding (Lossless)</h4>
+    <p>The DC coefficient of each block is encoded using <strong>DPCM</strong> (difference from previous block's DC). The AC coefficients are encoded using <strong>RLE</strong> (to compress runs of zeros) followed by <strong>Huffman coding</strong>.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>Decompression (JPEG Decode)</h3>
+    <p>Reverse all steps: Entropy decode → inverse zigzag → dequantize (multiply by Q) → IDCT → add 128 → reconstruct image. The quantization step causes irreversible loss — dequantized values are only approximations.</p>
+
+    <div class="formula-box">
+      <span class="label">Dequantization</span>
+      <div class="formula">F_approx(u,v) = F̂(u,v) × Q(u,v)</div>
+      <div class="note">This is an approximation of the original F(u,v) — the quantization error (F − F_approx) is the lossy part.</div>
+    </div>
+  </div>
+
+  <div class="tip-box trick">
+    <div class="tip-icon">⚡</div>
+    <div class="tip-content">
+      <div class="tip-title">Why DCT? — The Two Reasons RTU Asks</div>
+      <p>1. <strong>Energy compaction:</strong> DCT packs most image energy into a few low-frequency coefficients. After quantization, many high-frequency coefficients become zero → highly compressible by RLE.<br>
+      2. <strong>No complex numbers:</strong> Unlike DFT, DCT produces only real-valued coefficients — faster computation, simpler hardware. This is why the JPEG standard chose DCT over DFT.</p>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — JPEG Compression</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. With a neat block diagram, explain transform-based image compression scheme. Also give two valid reasons for the choice of "Discrete Cosine Transform" in JPEG image compression standard.</div>
+      <div class="pyq-meta">2024 · Part C Q5 · 10 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Transform-Based Image Compression (JPEG):</strong><br><br>
+          <strong>Block Diagram:</strong><br>
+          [Draw the 6-stage pipeline from Fig 9.1: Image → Block Split → DCT → Quantize → Zigzag → Entropy Code → JPEG file]<br><br>
+
+          <strong>Stage 1 — Partitioning:</strong> Image divided into 8×8 blocks. Pixel values level-shifted by −128 to center around zero.<br><br>
+          <strong>Stage 2 — DCT (2D):</strong> Each 8×8 block transformed to frequency domain using 2D-DCT. Produces 64 coefficients: 1 DC (average) + 63 AC (variation). Most energy concentrated in few low-frequency coefficients.<br><br>
+          <strong>Stage 3 — Quantization (Lossy):</strong> F̂(u,v) = round[F(u,v) / Q(u,v)]. JPEG quantization table Q uses larger divisors for high frequencies. Result: many high-frequency AC coefficients → 0. This is the ONLY lossy stage.<br><br>
+          <strong>Stage 4 — Zigzag Scan:</strong> 8×8 matrix linearized in zigzag order (DC→low freq→high freq). Groups trailing zeros together for efficient RLE.<br><br>
+          <strong>Stage 5 — Entropy Coding:</strong> DC: DPCM between adjacent blocks. AC: RLE encodes (zero_count, nonzero_value) pairs + Huffman coding. EOB (End of Block) marker for remaining zeros.<br><br>
+
+          <strong>Two reasons for choosing DCT in JPEG:</strong><br>
+          1. <em>Superior energy compaction:</em> DCT concentrates 90%+ of block energy in ~10% of coefficients (the DC and low-frequency ACs). This allows aggressive zeroing of high-frequency coefficients with minimal perceptual quality loss, enabling high compression ratios (10:1 to 100:1).<br><br>
+          2. <em>Real-valued output (computational efficiency):</em> Unlike DFT which produces complex coefficients, DCT produces only real-valued coefficients. This makes hardware implementation faster and simpler. DCT can be computed using fast FFT-like algorithms with only real arithmetic — critical for real-time JPEG encoding in cameras and smartphones.
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Differences between lossy and lossless compression techniques. Explain JPEG compression technique with an example.</div>
+      <div class="pyq-meta">June 2023 · Part C Q2 · 10 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Lossless vs Lossy Compression:</strong>
+          <table class="comp-table" style="font-size:12px">
+            <tr><th>Parameter</th><th>Lossless</th><th>Lossy</th></tr>
+            <tr><td>Reconstruction</td><td>Exact (identical to original)</td><td>Approximate</td></tr>
+            <tr><td>Compression ratio</td><td>2:1 to 10:1</td><td>10:1 to 100:1+</td></tr>
+            <tr><td>Algorithms</td><td>Huffman, LZW, RLE, PNG</td><td>JPEG, MPEG, MP3</td></tr>
+            <tr><td>Use cases</td><td>Medical, legal, archival</td><td>Web, social media, streaming</td></tr>
+            <tr><td>PSNR after decode</td><td>∞ (no error)</td><td>30–50 dB typically</td></tr>
+            <tr><td>Exploits</td><td>Coding + interpixel redundancy</td><td>All 3 types including psychovisual</td></tr>
+          </table>
+          <br>
+          <strong>JPEG Compression Technique:</strong><br>
+          (Refer to full JPEG pipeline explanation in theory section — draw all 6 stages with block diagram)<br><br>
+          <strong>Mini-Example (DCT on 8×8 block):</strong><br>
+          Consider uniform 8×8 block with all values = 100.<br>
+          After level shift: all values = 100 - 128 = -28.<br>
+          2D-DCT: F(0,0) = (1/4)×(1/√2)×(1/√2) × Σ(-28) = (1/4)×(1/2)×64×(-28) = <strong>-224</strong> (DC coefficient)<br>
+          All other F(u,v) = 0 (uniform block has no spatial variation = zero AC coefficients).<br>
+          After quantization: F̂(0,0) = round(-224/16) = <strong>-14</strong>. All AC = 0.<br>
+          This shows perfect energy compaction — a uniform region is represented by just 1 coefficient!
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MASTER PYQ LIST -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="section" id="pyq-master">
+  <div class="section-header">
+    <span class="section-num">✦</span>
+    <h2 class="section-title">All RTU PYQs — Master List</h2>
+    <span class="importance-pill badge badge-red">Complete Reference</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Part A Questions (2 marks) — Unit 5</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>Identify the types of redundancies in image compression.</td><td>Redundancy</td></tr>
+      <tr><td>2024</td><td>Differentiate between lossy and lossless compression techniques.</td><td>Compression Types ⭐</td></tr>
+      <tr><td>2024</td><td>What are the performance metrics for evaluating image compression?</td><td>Metrics</td></tr>
+      <tr><td>2023</td><td>Explain interpixel and psychovisual redundancies with a suitable example of each.</td><td>Redundancy ⭐</td></tr>
+      <tr><td>2022</td><td>(Unit 5 questions in Part B — see below)</td><td>—</td></tr>
+    </table>
+
+    <h3 style="margin-top:20px">Part B Questions (4 marks) — Unit 5</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>Write notes on Run-length encoding and Shift codes.</td><td>RLE ⭐</td></tr>
+      <tr><td>2024</td><td>(No direct Part B, but Q7 on lossy in Part B context)</td><td>—</td></tr>
+      <tr><td>2023</td><td>Compress the 4×8 8-bit image using Huffman coding. Find Lavg, redundancy, Cr, entropy.</td><td>Huffman Numerical ⭐⭐</td></tr>
+      <tr><td>2023</td><td>Relative data redundancy vs compression ratio. Calculate average bits/pixel.</td><td>Metrics Numerical ⭐</td></tr>
+      <tr><td>2022</td><td>What is data redundancy? Also write its take.</td><td>Redundancy</td></tr>
+    </table>
+
+    <h3 style="margin-top:20px">Part C Questions (10 marks) — Unit 5</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>Decode 0.23355 + LZW + Redundancies (same as 2024!)</td><td>Arithmetic + LZW ⭐⭐⭐</td></tr>
+      <tr><td>2024</td><td>Decode arithmetic 0.23355 + LZW coding + Redundancies removal</td><td>Arithmetic + LZW ⭐⭐⭐</td></tr>
+      <tr><td>2024</td><td>Transform-based compression + two reasons for DCT in JPEG</td><td>JPEG + DCT ⭐⭐</td></tr>
+      <tr><td>2023</td><td>Lossy vs lossless + JPEG compression technique</td><td>JPEG ⭐⭐</td></tr>
+    </table>
+  </div>
+
+  <div class="tip-box trick">
+    <div class="tip-icon">🏆</div>
+    <div class="tip-content">
+      <div class="tip-title">Top 5 Must-Prepare Topics (Priority Order)</div>
+      <p>
+        <strong>1.</strong> Arithmetic coding decode — memorize the EAII! solution for 0.23355 exactly<br>
+        <strong>2.</strong> LZW coding — encode "ABABABAB" example with full dictionary table<br>
+        <strong>3.</strong> Huffman coding — full tree construction + L_avg + entropy + compression ratio<br>
+        <strong>4.</strong> JPEG pipeline — all 6 stages with block diagram + DCT formula + why DCT<br>
+        <strong>5.</strong> Three types of redundancy — definitions + examples + removal methods
+      </p>
+    </div>
+  </div>
+
+  <div class="tip-box validate">
+    <div class="tip-icon">📋</div>
+    <div class="tip-content">
+      <div class="tip-title">General 10-Mark Answer Framework</div>
+      <p>
+        <strong>Para 1:</strong> Definition/Introduction (2–3 lines)<br>
+        <strong>Para 2:</strong> Mathematical formulation/formula (boxed)<br>
+        <strong>Para 3:</strong> Algorithm/steps (numbered)<br>
+        <strong>Diagram:</strong> Block diagram or tree (earns 3–4 marks!)<br>
+        <strong>Para 4:</strong> Numerical example with step-by-step work<br>
+        <strong>Para 5:</strong> Advantages, Limitations, Applications
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<!-- Mobile sidebar toggle button -->
+<button class="sidebar-toggle" id="burgerBtn" onclick="openSidebar()">☰</button>
+
+<script>
+  function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('overlay').classList.add('visible');
+    document.getElementById('burgerBtn').classList.add('open');
+    document.getElementById('burgerBtn').textContent = '✕';
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('visible');
+    document.getElementById('burgerBtn').classList.remove('open');
+    document.getElementById('burgerBtn').textContent = '☰';
+    document.body.style.overflow = '';
+  }
+
+  // Active nav highlight on scroll
+  const sections = document.querySelectorAll('.section');
+  const navItems = document.querySelectorAll('.nav-item');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 100) current = s.id;
+    });
+    navItems.forEach(n => {
+      n.classList.remove('active');
+      if (n.getAttribute('href') === '#' + current) n.classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>
