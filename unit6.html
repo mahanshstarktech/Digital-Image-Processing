@@ -1,0 +1,1957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIP Unit 6 — Image Segmentation & Representation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;600;700;800&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2130;
+    --border: #2a3045;
+    --accent: #4af0b4;
+    --accent2: #f0c44a;
+    --accent3: #f04a7a;
+    --accent4: #4a9af0;
+    --text: #e8eaf2;
+    --text-dim: #8892a8;
+    --mono: 'IBM Plex Mono', monospace;
+    --heading: 'Syne', sans-serif;
+    --body: 'Source Serif 4', serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  /* ── HEADER ── */
+  .hero {
+    background: linear-gradient(135deg, #0d0f14 0%, #0f1a2e 50%, #0d1a15 100%);
+    padding: 48px 32px 36px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 39px, #2a304522 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, #2a304522 40px);
+  }
+  .hero-inner { position: relative; max-width: 960px; margin: 0 auto; }
+  .hero-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .hero h1 {
+    font-family: var(--heading);
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    color: #fff;
+  }
+  .hero h1 span { color: var(--accent); }
+  .hero-sub {
+    margin-top: 12px;
+    color: var(--text-dim);
+    font-size: 15px;
+    max-width: 580px;
+  }
+  .hero-badges {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid;
+  }
+  .badge-green { color: var(--accent); border-color: var(--accent); background: #4af0b41a; }
+  .badge-yellow { color: var(--accent2); border-color: var(--accent2); background: #f0c44a1a; }
+  .badge-red { color: var(--accent3); border-color: var(--accent3); background: #f04a7a1a; }
+  .badge-blue { color: var(--accent4); border-color: var(--accent4); background: #4a9af01a; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; max-width: 1280px; margin: 0 auto; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 260px;
+    min-width: 260px;
+    padding: 28px 16px;
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--heading);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    transition: all 0.2s;
+    margin-bottom: 2px;
+    text-decoration: none;
+  }
+  .nav-item:hover, .nav-item.active {
+    background: var(--surface2);
+    color: var(--text);
+  }
+  .nav-item.active { color: var(--accent); border-left: 2px solid var(--accent); }
+  .nav-imp {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--surface2);
+  }
+  .nav-imp.high { color: var(--accent3); }
+  .nav-imp.med { color: var(--accent2); }
+  .nav-imp.low { color: var(--accent); }
+
+  /* ── CONTENT ── */
+  .content {
+    flex: 1;
+    padding: 32px 36px;
+    max-width: calc(100% - 260px);
+    overflow-x: hidden;
+  }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 60px;
+    scroll-margin-top: 20px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    background: #4af0b415;
+    border: 1px solid #4af0b440;
+    padding: 4px 8px;
+    border-radius: 4px;
+    min-width: 36px;
+    text-align: center;
+  }
+  .section-title {
+    font-family: var(--heading);
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .importance-pill {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  /* ── THEORY BLOCKS ── */
+  .theory-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 20px;
+  }
+  .theory-block h3 {
+    font-family: var(--heading);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 12px;
+  }
+  .theory-block p { margin-bottom: 10px; color: var(--text); }
+  .theory-block p:last-child { margin-bottom: 0; }
+
+  /* ── FORMULA BLOCK ── */
+  .formula-box {
+    background: #0a0e18;
+    border: 1px solid var(--accent4);
+    border-left: 3px solid var(--accent4);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent4);
+    overflow-x: auto;
+  }
+  .formula-box .label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .formula-box .formula { color: #a8d4ff; }
+  .formula-box .note { color: var(--text-dim); font-size: 12px; margin-top: 8px; }
+
+  /* ── KERNEL / MATRIX ── */
+  .kernel-grid {
+    display: inline-flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+  }
+  .kernel-wrap { text-align: center; }
+  .kernel-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .kernel {
+    display: inline-grid;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .kernel-cell {
+    padding: 8px 12px;
+    text-align: center;
+    border: 1px solid #1e2535;
+    min-width: 40px;
+  }
+  .kernel-cell.pos { color: #4af0b4; }
+  .kernel-cell.neg { color: #f04a7a; }
+  .kernel-cell.zero { color: var(--text-dim); }
+  .kernel-cell.center { background: #1c2130; color: var(--accent2); font-weight: 700; }
+
+  /* ── TIPS ── */
+  .tip-box {
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 14px 0;
+    display: flex;
+    gap: 12px;
+  }
+  .tip-box.trick { background: #f0c44a12; border: 1px solid #f0c44a40; }
+  .tip-box.validate { background: #4af0b412; border: 1px solid #4af0b440; }
+  .tip-box.connect { background: #4a9af012; border: 1px solid #4a9af040; }
+  .tip-box.warning { background: #f04a7a12; border: 1px solid #f04a7a40; }
+  .tip-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+  .tip-content { flex: 1; }
+  .tip-title {
+    font-family: var(--heading);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .tip-box.trick .tip-title { color: var(--accent2); }
+  .tip-box.validate .tip-title { color: var(--accent); }
+  .tip-box.connect .tip-title { color: var(--accent4); }
+  .tip-box.warning .tip-title { color: var(--accent3); }
+  .tip-content p { font-size: 14px; color: var(--text); margin: 0; }
+
+  /* ── EXAMPLE BOX ── */
+  .example-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin: 14px 0;
+  }
+  .example-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* ── PYQ BLOCK ── */
+  .pyq-section {
+    background: #07090f;
+    border: 1px solid #f0c44a30;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-top: 24px;
+  }
+  .pyq-header {
+    font-family: var(--heading);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pyq-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .pyq-q {
+    font-family: var(--heading);
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .pyq-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  .pyq-answer { font-size: 14px; line-height: 1.8; }
+  .pyq-toggle {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    margin-top: 10px;
+    transition: all 0.2s;
+  }
+  .pyq-toggle:hover { background: var(--accent); color: #000; }
+  .answer-content { display: none; margin-top: 14px; }
+  .answer-content.open { display: block; }
+
+  /* ── TABLE ── */
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .comp-table th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: left;
+    font-family: var(--heading);
+    font-weight: 700;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+  }
+  .comp-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .comp-table tr:last-child td { border-bottom: none; }
+  .comp-table tr:hover td { background: var(--surface2); }
+
+  /* ── STEPS ── */
+  .steps { margin: 14px 0; }
+  .step-item {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+  .step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #000;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-text { font-size: 15px; padding-top: 4px; }
+
+  /* ── IMPORTANCE BAR ── */
+  .imp-bar-wrap { margin-bottom: 8px; }
+  .imp-bar-label { font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .imp-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .imp-bar-fill { height: 100%; border-radius: 3px; }
+  .imp-high .imp-bar-fill { background: var(--accent3); }
+  .imp-med .imp-bar-fill { background: var(--accent2); }
+  .imp-low .imp-bar-fill { background: var(--accent); }
+
+  /* ── DIAGRAM SVG WRAPPERS ── */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    text-align: center;
+  }
+  .diagram-cap {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  code {
+    font-family: var(--mono);
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: var(--accent4);
+  }
+
+  pre {
+    background: #070a10;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    margin: 12px 0;
+    line-height: 1.6;
+  }
+
+  ul, ol { padding-left: 20px; margin: 10px 0; }
+  li { margin-bottom: 6px; font-size: 15px; }
+
+  .highlight { color: var(--accent); font-weight: 600; }
+  .hl-yellow { color: var(--accent2); }
+  .hl-red { color: var(--accent3); }
+
+  h4 {
+    font-family: var(--heading);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 16px 0 8px;
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* ── MOBILE ── */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .content { max-width: 100%; padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-tag">📚 B.Tech VI Sem · RTU Exam Prep · Digital Image Processing</div>
+    <h1>Unit 6: Image Segmentation<br><span>&amp; Representation</span></h1>
+    <p class="hero-sub">Complete exam-ready guide with formulas, diagrams, PYQ solutions (2022–2025), tricks, and topic importance ratings.</p>
+    <div class="hero-badges">
+      <span class="badge badge-red">🔥 High Priority</span>
+      <span class="badge badge-yellow">RTU PYQs Solved</span>
+      <span class="badge badge-green">Exam Tricks</span>
+      <span class="badge badge-blue">Unit Connections</span>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-title">Topics</div>
+  <a class="nav-item active" href="#overview">📊 Overview & Importance</a>
+  <a class="nav-item" href="#intro">🧭 What is Segmentation?</a>
+  <a class="nav-item" href="#point-line">🔵 Point & Line Detection<span class="nav-imp med">70%</span></a>
+  <a class="nav-item" href="#edge">⚡ Edge Detection<span class="nav-imp high">95%</span></a>
+  <a class="nav-item" href="#threshold">🎚️ Thresholding<span class="nav-imp high">80%</span></a>
+  <a class="nav-item" href="#boundary-link">🔗 Edge/Boundary Linking<span class="nav-imp med">75%</span></a>
+  <a class="nav-item" href="#hough">🔺 Hough Transform<span class="nav-imp high">90%</span></a>
+  <a class="nav-item" href="#region">🗺️ Region Segmentation<span class="nav-imp high">85%</span></a>
+  <a class="nav-item" href="#boundary-rep">✏️ Boundary Representation<span class="nav-imp med">75%</span></a>
+  <a class="nav-item" href="#descriptors">📐 Boundary Descriptors<span class="nav-imp low">60%</span></a>
+  <a class="nav-item" href="#pyq-master">📝 All PYQs Master List</a>
+</nav>
+
+<!-- CONTENT -->
+<main class="content">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- OVERVIEW -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="section" id="overview">
+  <div class="section-header">
+    <span class="section-num">00</span>
+    <h2 class="section-title">Topic Importance Analysis</h2>
+  </div>
+
+  <div class="theory-block">
+    <p>Based on RTU PYQs from 2022, 2023, 2024, and 2025, here is the importance of each Unit 6 sub-topic:</p>
+
+    <div class="imp-bar-wrap imp-high" style="margin-top:16px">
+      <div class="imp-bar-label"><span>Edge Detection (Sobel, Prewitt, Roberts, LoG)</span><span style="color:#f04a7a">95%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:95%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Hough Transform</span><span style="color:#f04a7a">90%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:90%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Region Growing & Splitting/Merging</span><span style="color:#f04a7a">85%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:85%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Thresholding</span><span style="color:#f0c44a">80%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:80%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Boundary Representation (Chain Code)</span><span style="color:#f0c44a">75%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:75%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Edge/Boundary Linking (Local + Global)</span><span style="color:#f0c44a">75%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:75%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Point & Line Detection</span><span style="color:#4af0b4">70%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:70%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-low" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Boundary Descriptors</span><span style="color:#4af0b4">60%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:60%"></div></div>
+    </div>
+  </div>
+
+  <div class="tip-box trick">
+    <div class="tip-icon">⚡</div>
+    <div class="tip-content">
+      <div class="tip-title">Exam Strategy</div>
+      <p>Edge Detection + Hough Transform + Region Segmentation = the three pillars that appear in almost every RTU paper. If you master these three, you can score 24–30 marks in Part B+C from Unit 6 alone. Always draw the kernel/mask when answering edge detection questions — it alone earns 2–3 marks.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- INTRO -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="section" id="intro">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">What is Image Segmentation?</h2>
+    <span class="importance-pill badge badge-yellow">Conceptual</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Definition</h3>
+    <p><span class="highlight">Image Segmentation</span> is the process of <strong>partitioning a digital image into multiple regions (sets of pixels)</strong> such that pixels in the same region share similar properties (intensity, color, texture), and pixels in different regions are dissimilar.</p>
+    <p>In simple words: You have a photo of a cat sitting on a sofa. Segmentation separates the image into — <em>cat pixels</em>, <em>sofa pixels</em>, and <em>background pixels</em>.</p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 600 120" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="10" width="160" height="100" rx="8" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="90" y="45" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="11">INPUT</text>
+        <text x="90" y="62" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">Full Image</text>
+        <text x="90" y="78" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">f(x,y)</text>
+        <polygon points="185,60 215,50 215,70" fill="#4af0b4"/>
+        <text x="200" y="90" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">Segment</text>
+        <rect x="225" y="10" width="360" height="100" rx="8" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <rect x="235" y="20" width="100" height="80" rx="5" fill="#0f1a2e" stroke="#f04a7a" stroke-width="1"/>
+        <text x="285" y="58" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="10">Region 1</text>
+        <text x="285" y="74" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Cat</text>
+        <rect x="345" y="20" width="100" height="80" rx="5" fill="#0f1a2e" stroke="#f0c44a" stroke-width="1"/>
+        <text x="395" y="58" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="10">Region 2</text>
+        <text x="395" y="74" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Sofa</text>
+        <rect x="455" y="20" width="120" height="80" rx="5" fill="#0f1a2e" stroke="#4af0b4" stroke-width="1"/>
+        <text x="515" y="58" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="10">Region 3</text>
+        <text x="515" y="74" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Background</text>
+      </svg>
+      <div class="diagram-cap">Fig 1.1 — Segmentation partitions image into meaningful regions</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Why Segmentation? (Write this for 2-mark "need of segmentation" questions)</h3>
+    <ul>
+      <li><strong>Object recognition:</strong> Identify and locate objects in an image (e.g., face detection).</li>
+      <li><strong>Medical imaging:</strong> Segment tumors, organs, or tissues from MRI/CT scans.</li>
+      <li><strong>Machine vision:</strong> Industrial inspection systems to detect defects.</li>
+      <li><strong>Satellite imaging:</strong> Separate land, water, vegetation regions.</li>
+      <li><strong>Traffic systems:</strong> Detect lanes, vehicles, pedestrians.</li>
+    </ul>
+  </div>
+
+  <div class="theory-block">
+    <h3>Approaches to Segmentation (The Big 3 — Write this as intro in any Part-C answer)</h3>
+    <ul>
+      <li><span class="highlight">Discontinuity-based:</span> Find abrupt changes in intensity → <strong>Edge detection, Point/Line detection</strong></li>
+      <li><span class="highlight">Similarity-based:</span> Group pixels with similar properties → <strong>Thresholding, Region Growing</strong></li>
+      <li><span class="highlight">Boundary-based:</span> Detect and link boundaries → <strong>Hough Transform, Boundary linking</strong></li>
+    </ul>
+  </div>
+
+  <div class="tip-box connect">
+    <div class="tip-icon">🔗</div>
+    <div class="tip-content">
+      <div class="tip-title">Connection to Previous Units</div>
+      <p><strong>Unit 3 (Spatial Filtering):</strong> The derivative operators (gradient, Laplacian) used in segmentation ARE the spatial filters you studied. Sobel operator = a spatial high-pass filter. <br><strong>Unit 3 (Fourier/Frequency Domain):</strong> Edge detection in frequency domain = applying high-pass filter. <br><strong>Unit 4 (Restoration):</strong> Noise removal (Unit 4) is done BEFORE segmentation to get clean edges.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- POINT & LINE DETECTION -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="section" id="point-line">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2 class="section-title">Point & Line Detection</h2>
+    <span class="importance-pill badge badge-yellow">70% · Part A/B</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Basic Concept: What are Discontinuities?</h3>
+    <p>In an image, <strong>discontinuities</strong> are locations where the intensity changes abruptly. There are three types:</p>
+    <ul>
+      <li><span class="highlight">Point:</span> An isolated pixel with very different intensity from neighbors (isolated bright/dark dot)</li>
+      <li><span class="highlight">Line:</span> A thin, elongated set of pixels with different intensity (scratch on metal, wire, etc.)</li>
+      <li><span class="highlight">Edge:</span> A broader boundary between two regions (most important!)</li>
+    </ul>
+    <p>Detection is done using <strong>masks (kernels)</strong> — you slide the mask over the image and check where the response exceeds a threshold.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>Point Detection</h3>
+    <p>A point is detected using the <strong>Laplacian mask</strong>. If the response |R| at a pixel exceeds threshold T, a point is detected there.</p>
+
+    <div class="formula-box">
+      <span class="label">Response of mask w at point (x,y)</span>
+      <div class="formula">R = w₁z₁ + w₂z₂ + w₃z₃ + ... + w₉z₉ = Σ wᵢzᵢ</div>
+      <div class="note">where z₁ to z₉ = pixel values in the 3×3 neighborhood, w = mask coefficients</div>
+      <div class="formula" style="margin-top:10px">A point is detected if: |R| ≥ T</div>
+    </div>
+
+    <div class="kernel-grid">
+      <div class="kernel-wrap">
+        <div class="kernel-label">Point Detection Mask</div>
+        <div class="kernel" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell center">+8</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">💡</div>
+      <div class="tip-content">
+        <div class="tip-title">Memory Trick</div>
+        <p>Point detection mask = Laplacian mask with center = +8 and all neighbors = -1. Sum of all weights = 0. This is the SAME mask from Unit 3 image sharpening! The sum = 8 + 8×(-1) = 0. Always verify your mask by checking that all values sum to zero.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Line Detection</h3>
+    <p>Lines run in specific directions. We use four masks — one for each direction. The mask with the <strong>highest response</strong> tells us the line direction at that pixel.</p>
+
+    <div class="kernel-grid">
+      <div class="kernel-wrap">
+        <div class="kernel-label">Horizontal (0°)</div>
+        <div class="kernel" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell pos">+2</div><div class="kernel-cell pos">+2</div><div class="kernel-cell pos">+2</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div>
+        </div>
+      </div>
+      <div class="kernel-wrap">
+        <div class="kernel-label">Vertical (90°)</div>
+        <div class="kernel" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell pos">+2</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell pos">+2</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell pos">+2</div><div class="kernel-cell neg">-1</div>
+        </div>
+      </div>
+      <div class="kernel-wrap">
+        <div class="kernel-label">+45° Diagonal</div>
+        <div class="kernel" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div><div class="kernel-cell pos">+2</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell pos">+2</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell pos">+2</div><div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div>
+        </div>
+      </div>
+      <div class="kernel-wrap">
+        <div class="kernel-label">-45° Diagonal</div>
+        <div class="kernel" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="kernel-cell pos">+2</div><div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell pos">+2</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div><div class="kernel-cell pos">+2</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">⚡</div>
+      <div class="tip-content">
+        <div class="tip-title">Pattern Trick — Remember All 4 Masks</div>
+        <p>In each line detection mask, the direction of +2 values = the line direction you're detecting. Row of +2 = horizontal line mask. Column of +2 = vertical line mask. Diagonal of +2 = diagonal line mask. All masks sum to zero. If any of the 9 values in mask is wrong, the sum ≠ 0, so use this to self-check!</p>
+      </div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-label">📌 Example — Line Detection Logic</div>
+      <p>Suppose you apply all 4 masks to a pixel region. You get R₁=5, R₂=2, R₃=12, R₄=3. The maximum is R₃=12 (45° diagonal mask). → This pixel lies on a <strong>+45° diagonal line</strong>. If R₃ ≥ T (threshold), it's marked as a detected line point.</p>
+    </div>
+  </div>
+
+  <!-- PYQ -->
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Point & Line Detection</div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What is the need of image segmentation? Explain edge, point, and line detection processes in brief.</div>
+      <div class="pyq-meta">June 2023 · Part A Q9 · 2 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide Answer' : '▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Need of Image Segmentation:</strong> Segmentation divides an image into meaningful regions for object recognition, medical diagnosis, remote sensing, and machine vision applications.<br><br>
+          <strong>Point Detection:</strong> Uses Laplacian mask (center=+8, neighbors=-1). A point is detected at (x,y) if |R| ≥ T.<br><br>
+          <strong>Line Detection:</strong> Uses 4 directional masks (0°, 90°, +45°, -45°). For each mask, compute response R. Apply all 4 masks; the mask with maximum response indicates line direction. Mark pixel if R ≥ T.<br><br>
+          <strong>Edge Detection:</strong> Detects boundaries between regions using gradient operators (Sobel, Prewitt, Roberts) or Laplacian. Edge pixels have high gradient magnitude.
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain gradient operator?</div>
+      <div class="pyq-meta">June 2022 · Part A Q5 · 2 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide Answer' : '▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          The <strong>gradient operator</strong> measures the rate of change of intensity in an image. For a 2D image f(x,y):<br><br>
+          ∇f = [∂f/∂x, ∂f/∂y] = [Gx, Gy]<br><br>
+          <strong>Magnitude:</strong> |∇f| = √(Gx² + Gy²) ≈ |Gx| + |Gy| (approximation used in practice)<br>
+          <strong>Direction:</strong> θ = arctan(Gy/Gx)<br><br>
+          The gradient points in the direction of maximum intensity increase. Gradient magnitude is high at edges and low in uniform regions. Used in edge detection algorithms like Sobel, Prewitt, and Roberts.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- EDGE DETECTION -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="section" id="edge">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2 class="section-title">Edge Detection</h2>
+    <span class="importance-pill badge badge-red">🔥 95% — Most Important</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What is an Edge?</h3>
+    <p>An <span class="highlight">edge</span> is a set of connected pixels that lie on the boundary between two regions. Edges occur where there is a <strong>sharp change in intensity</strong>. They contain the most important structural information about an image — shapes, boundaries, and texture.</p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 600 180" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <!-- Original signal -->
+        <text x="10" y="25" fill="#8892a8" font-family="IBM Plex Mono" font-size="11">Intensity Profile (1D cross-section)</text>
+        <polyline points="10,160 100,160 100,80 200,80 200,160 300,160" stroke="#4a9af0" stroke-width="2" fill="none"/>
+        <text x="10" y="175" fill="#4a9af0" font-family="IBM Plex Mono" font-size="9">f(x) — original</text>
+        <!-- 1st derivative -->
+        <polyline points="310,160 360,160 385,120 400,160 450,160" stroke="#4af0b4" stroke-width="2" fill="none"/>
+        <text x="310" y="175" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">f'(x) — 1st derivative (peak at edge)</text>
+        <!-- Labels -->
+        <line x1="100" y1="60" x2="100" y2="165" stroke="#f04a7a" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="85" y="58" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">EDGE</text>
+        <text x="40" y="145" fill="#8892a8" font-family="IBM Plex Mono" font-size="10">dark</text>
+        <text x="140" y="70" fill="#8892a8" font-family="IBM Plex Mono" font-size="10">bright</text>
+      </svg>
+      <div class="diagram-cap">Fig 3.1 — Edge = sharp intensity change → 1st derivative peaks at edge location</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>The Gradient — Mathematical Foundation</h3>
+    <p>For a 2D image f(x,y), the gradient vector is:</p>
+
+    <div class="formula-box">
+      <span class="label">Gradient Vector</span>
+      <div class="formula">∇f = [∂f/∂x, ∂f/∂y]ᵀ = [Gx, Gy]ᵀ</div>
+      <div class="formula" style="margin-top:8px">Magnitude: M(x,y) = |∇f| = √(Gx² + Gy²)  ≈ |Gx| + |Gy|</div>
+      <div class="formula" style="margin-top:8px">Direction: α(x,y) = arctan(Gy / Gx)</div>
+      <div class="note">The gradient direction is perpendicular to the edge direction.</div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">⚡</div>
+      <div class="tip-content">
+        <div class="tip-title">Fast Calculation Trick</div>
+        <p>In numerical problems, use the approximation <strong>M ≈ |Gx| + |Gy|</strong> instead of √(Gx²+Gy²). This avoids square root and gives nearly the same result. RTU expects this. Example: Gx=3, Gy=4 → exact=5, approx=7. For direction: θ = arctan(4/3) ≈ 53°.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="theory-block">
+    <h3>⭐ Roberts Cross Operator (2×2, Simplest)</h3>
+    <p>Approximates diagonal gradients. Used for thin, noise-free edges. Computationally cheapest.</p>
+
+    <div class="kernel-grid">
+      <div class="kernel-wrap">
+        <div class="kernel-label">Gx (Roberts)</div>
+        <div class="kernel" style="grid-template-columns: repeat(2, 1fr)">
+          <div class="kernel-cell pos">+1</div><div class="kernel-cell zero">0</div>
+          <div class="kernel-cell zero">0</div><div class="kernel-cell neg">-1</div>
+        </div>
+      </div>
+      <div class="kernel-wrap">
+        <div class="kernel-label">Gy (Roberts)</div>
+        <div class="kernel" style="grid-template-columns: repeat(2, 1fr)">
+          <div class="kernel-cell zero">0</div><div class="kernel-cell pos">+1</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell zero">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="formula-box">
+      <div class="formula">Gx = z₅ - z₉    (diagonal difference)</div>
+      <div class="formula">Gy = z₆ - z₈    (anti-diagonal difference)</div>
+      <div class="note">z₅=top-left, z₆=top-right, z₈=bottom-left, z₉=bottom-right of 2×2 region</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ Prewitt Operator (3×3)</h3>
+    <p>Approximates gradient using difference of averages. More noise-robust than Roberts. Uses equal weights in smoothing direction.</p>
+
+    <div class="kernel-grid">
+      <div class="kernel-wrap">
+        <div class="kernel-label">Gx (Prewitt) — vertical edges</div>
+        <div class="kernel" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell zero">0</div><div class="kernel-cell pos">+1</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell zero">0</div><div class="kernel-cell pos">+1</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell zero">0</div><div class="kernel-cell pos">+1</div>
+        </div>
+      </div>
+      <div class="kernel-wrap">
+        <div class="kernel-label">Gy (Prewitt) — horizontal edges</div>
+        <div class="kernel" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell zero">0</div><div class="kernel-cell zero">0</div><div class="kernel-cell zero">0</div>
+          <div class="kernel-cell pos">+1</div><div class="kernel-cell pos">+1</div><div class="kernel-cell pos">+1</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ Sobel Operator (3×3) — MOST ASKED in RTU</h3>
+    <p>Like Prewitt but with <strong>double weight at center row/column</strong> — this provides more smoothing and better noise suppression. Preferred in practice.</p>
+
+    <div class="kernel-grid">
+      <div class="kernel-wrap">
+        <div class="kernel-label">Gx (Sobel) — vertical edges</div>
+        <div class="kernel" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell zero">0</div><div class="kernel-cell pos">+1</div>
+          <div class="kernel-cell neg">-2</div><div class="kernel-cell zero">0</div><div class="kernel-cell pos">+2</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell zero">0</div><div class="kernel-cell pos">+1</div>
+        </div>
+      </div>
+      <div class="kernel-wrap">
+        <div class="kernel-label">Gy (Sobel) — horizontal edges</div>
+        <div class="kernel" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell neg">-2</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell zero">0</div><div class="kernel-cell zero">0</div><div class="kernel-cell zero">0</div>
+          <div class="kernel-cell pos">+1</div><div class="kernel-cell pos">+2</div><div class="kernel-cell pos">+1</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">🧠</div>
+      <div class="tip-content">
+        <div class="tip-title">Sobel Memory Trick — "1-2-1 Smoothing + Derivative"</div>
+        <p>Sobel = Gaussian smoothing (1,2,1 weights) × Derivative ([-1, 0, +1]). That's why Gx has column pattern [-1,0,+1] applied with row weights [1,2,1]. You can reconstruct Sobel from scratch using this: outer product of [1,2,1]ᵀ × [-1,0,+1] = Gx. <br><strong>Quick check:</strong> In Gx, columns sum to -4, 0, +4. If not, wrong mask!</p>
+      </div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-label">📌 Numerical Example — Sobel on 3×3 Image</div>
+      <p>Given image patch:</p>
+      <pre>
+ 1  2  3
+ 4  5  6     Apply Sobel Gx mask
+ 7  8  9
+</pre>
+      <p>Gx = (-1)(1) + (0)(2) + (+1)(3) + (-2)(4) + (0)(5) + (+2)(6) + (-1)(7) + (0)(8) + (+1)(9)</p>
+      <p>Gx = -1 + 0 + 3 - 8 + 0 + 12 - 7 + 0 + 9 = <strong>8</strong></p>
+      <p>Gy = (-1)(1) + (-2)(2) + (-1)(3) + (0)(4) + (0)(5) + (0)(6) + (+1)(7) + (+2)(8) + (+1)(9)</p>
+      <p>Gy = -1 - 4 - 3 + 0 + 0 + 0 + 7 + 16 + 9 = <strong>24</strong></p>
+      <p>Magnitude M ≈ |Gx| + |Gy| = 8 + 24 = <strong>32</strong></p>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ Laplacian Operator (2nd Order Derivative)</h3>
+    <p>The Laplacian uses the <strong>second derivative</strong> of the image. It detects edges where the second derivative crosses zero (zero-crossing). It is <strong>isotropic</strong> (responds equally to all orientations).</p>
+
+    <div class="formula-box">
+      <span class="label">Laplacian Formula</span>
+      <div class="formula">∇²f = ∂²f/∂x² + ∂²f/∂y²</div>
+      <div class="formula" style="margin-top:8px">Discrete: ∇²f = f(x+1,y) + f(x-1,y) + f(x,y+1) + f(x,y-1) - 4f(x,y)</div>
+    </div>
+
+    <div class="kernel-grid">
+      <div class="kernel-wrap">
+        <div class="kernel-label">4-neighbor Laplacian</div>
+        <div class="kernel" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="kernel-cell zero">0</div><div class="kernel-cell pos">+1</div><div class="kernel-cell zero">0</div>
+          <div class="kernel-cell pos">+1</div><div class="kernel-cell center">-4</div><div class="kernel-cell pos">+1</div>
+          <div class="kernel-cell zero">0</div><div class="kernel-cell pos">+1</div><div class="kernel-cell zero">0</div>
+        </div>
+      </div>
+      <div class="kernel-wrap">
+        <div class="kernel-label">8-neighbor Laplacian</div>
+        <div class="kernel" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="kernel-cell pos">+1</div><div class="kernel-cell pos">+1</div><div class="kernel-cell pos">+1</div>
+          <div class="kernel-cell pos">+1</div><div class="kernel-cell center">-8</div><div class="kernel-cell pos">+1</div>
+          <div class="kernel-cell pos">+1</div><div class="kernel-cell pos">+1</div><div class="kernel-cell pos">+1</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip-box warning">
+      <div class="tip-icon">⚠️</div>
+      <div class="tip-content">
+        <div class="tip-title">Important Limitation of Laplacian</div>
+        <p>Laplacian is very sensitive to noise (amplifies noise because it takes second derivative). Solution: Apply Gaussian smoothing FIRST, then apply Laplacian → this gives the <strong>LoG (Laplacian of Gaussian)</strong> operator, also called "Mexican Hat" filter.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ LoG — Laplacian of Gaussian (Marr-Hildreth)</h3>
+    <p>Combines Gaussian smoothing with Laplacian edge detection. Best of both worlds: smooth noise, then find edges.</p>
+
+    <div class="formula-box">
+      <span class="label">LoG Formula (Mexican Hat)</span>
+      <div class="formula">LoG(x,y) = -1/(πσ⁴) · [1 - (x²+y²)/(2σ²)] · e^(-(x²+y²)/(2σ²))</div>
+      <div class="note">σ = standard deviation of Gaussian; Controls the scale of edge detection</div>
+      <div class="note">Zero-crossings of LoG output = edge locations</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 500 160" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="20" y="20" fill="#4af0b4" font-family="IBM Plex Mono" font-size="11">LoG Pipeline</text>
+        <rect x="20" y="35" width="90" height="40" rx="6" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="65" y="60" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="10">f(x,y)</text>
+        <polygon points="115,55 135,48 135,62" fill="#4af0b4"/>
+        <rect x="140" y="35" width="110" height="40" rx="6" fill="#1c2130" stroke="#f0c44a" stroke-width="1.5"/>
+        <text x="195" y="53" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="10">Gaussian</text>
+        <text x="195" y="68" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">Smooth (σ)</text>
+        <polygon points="255,55 275,48 275,62" fill="#4af0b4"/>
+        <rect x="280" y="35" width="110" height="40" rx="6" fill="#1c2130" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="335" y="53" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="10">Laplacian</text>
+        <text x="335" y="68" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">∇²</text>
+        <polygon points="395,55 415,48 415,62" fill="#4af0b4"/>
+        <rect x="420" y="35" width="60" height="40" rx="6" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="450" y="53" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="10">Zero</text>
+        <text x="450" y="68" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">Crossing</text>
+        <text x="65" y="115" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Input</text>
+        <text x="165" y="115" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Noise removed</text>
+        <text x="295" y="115" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">2nd derivative</text>
+        <text x="410" y="115" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Edges!</text>
+      </svg>
+      <div class="diagram-cap">Fig 3.2 — LoG pipeline: smooth then differentiate</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Comparison Table — Edge Operators</h3>
+    <table class="comp-table">
+      <tr>
+        <th>Operator</th><th>Type</th><th>Mask Size</th><th>Noise Sensitivity</th><th>Edge Thickness</th><th>Best For</th>
+      </tr>
+      <tr>
+        <td><span class="highlight">Roberts</span></td><td>1st deriv</td><td>2×2</td><td>Very High</td><td>Thin</td><td>Clean, noise-free images</td>
+      </tr>
+      <tr>
+        <td><span class="highlight">Prewitt</span></td><td>1st deriv</td><td>3×3</td><td>Moderate</td><td>Medium</td><td>General use</td>
+      </tr>
+      <tr>
+        <td><span class="hl-yellow">Sobel</span></td><td>1st deriv</td><td>3×3</td><td>Low (better)</td><td>Medium</td><td>Most practical use ⭐</td>
+      </tr>
+      <tr>
+        <td><span class="highlight">Laplacian</span></td><td>2nd deriv</td><td>3×3</td><td>Very High</td><td>Thin</td><td>Zero-crossing detection</td>
+      </tr>
+      <tr>
+        <td><span class="hl-red">LoG</span></td><td>2nd deriv</td><td>variable</td><td>Low (best)</td><td>Thin</td><td>Noisy images, precise edges</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="tip-box validate">
+    <div class="tip-icon">✅</div>
+    <div class="tip-content">
+      <div class="tip-title">Answer Validation Tricks</div>
+      <p>1. <strong>Mask sum = 0:</strong> Every edge/point/line mask should have all values summing to zero. If not, recheck.<br>
+      2. <strong>Symmetry check:</strong> Sobel Gx should be antisymmetric about center column (left side = negative of right side).<br>
+      3. <strong>Gradient direction ⊥ edge:</strong> If edge is horizontal, gradient should be vertical (θ = 90°). Verify this in examples.<br>
+      4. In numerical problems: if M is very large (>100 in 8-bit image), double-check the kernel application.</p>
+    </div>
+  </div>
+
+  <!-- PYQs -->
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Edge Detection</div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What are the derivative operators useful in image segmentation? Explain their role in segmentation.</div>
+      <div class="pyq-meta">2024 Part B Q5 & Part C Q4(b) · 4–10 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide Answer' : '▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Derivative Operators in Image Segmentation</strong><br><br>
+          Segmentation based on discontinuity uses derivative operators to detect abrupt changes in intensity (edges, points, lines).<br><br>
+
+          <strong>1. First-Order Derivative (Gradient) Operators:</strong><br>
+          These compute the gradient ∇f = [Gx, Gy]. Edges appear as local maxima in the gradient magnitude M = √(Gx²+Gy²).<br><br>
+          <em>a) Roberts Operator (2×2):</em><br>
+          Gx = z₅−z₉, Gy = z₆−z₈. Simple but very sensitive to noise.<br><br>
+          <em>b) Prewitt Operator (3×3):</em><br>
+          Uses equal-weight averaging in smoothing direction. Gx detects vertical edges, Gy detects horizontal edges.<br><br>
+          <em>c) Sobel Operator (3×3):</em><br>
+          Improved Prewitt with center weight doubled (2 instead of 1). Better noise suppression. Most widely used.
+          [Draw all three kernels — Gx and Gy for each]<br><br>
+
+          <strong>2. Second-Order Derivative (Laplacian) Operators:</strong><br>
+          ∇²f = ∂²f/∂x² + ∂²f/∂y²<br>
+          Edges are located at zero-crossings of the second derivative. Laplacian mask (4-neighbor): center=-4, cross=+1.<br>
+          LoG combines Gaussian smoothing with Laplacian to handle noise.<br><br>
+
+          <strong>Role in Segmentation:</strong><br>
+          • These operators highlight boundaries between image regions.<br>
+          • The detected edges form the boundary of segments.<br>
+          • After edge detection, edge linking and thresholding are applied to complete segment boundaries.<br>
+          • Combined with thresholding: pixels with M ≥ T are classified as edge pixels; these form segment boundaries.
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Consider an image - Show the output of any edge detection algorithm: [[1,2,5],[5,5,5],[5,3,2]]</div>
+      <div class="pyq-meta">May 2025 · Part C Q5 · 10 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide Answer' : '▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          Applying <strong>Sobel operator</strong> at center pixel (5) of the 3×3 image:<br><br>
+          Image:
+          <pre>  1  2  5
+  5  5  5
+  5  3  2</pre>
+          <strong>Gx (Sobel):</strong><br>
+          = (-1)(1) + (0)(2) + (+1)(5) + (-2)(5) + (0)(5) + (+2)(5) + (-1)(5) + (0)(3) + (+1)(2)<br>
+          = -1 + 0 + 5 - 10 + 0 + 10 - 5 + 0 + 2 = <strong>1</strong><br><br>
+          <strong>Gy (Sobel):</strong><br>
+          = (-1)(1) + (-2)(2) + (-1)(5) + (0)(5) + (0)(5) + (0)(5) + (+1)(5) + (+2)(3) + (+1)(2)<br>
+          = -1 - 4 - 5 + 0 + 0 + 0 + 5 + 6 + 2 = <strong>3</strong><br><br>
+          <strong>Magnitude:</strong> M ≈ |Gx| + |Gy| = |1| + |3| = <strong>4</strong><br>
+          <strong>Direction:</strong> θ = arctan(Gy/Gx) = arctan(3/1) ≈ <strong>71.6°</strong><br><br>
+          If threshold T = 3, then since M=4 > T=3, the center pixel is classified as an <strong>edge pixel</strong>.<br><br>
+          Note: For border pixels (corners/edges of the image), zero-padding is used before applying the mask.
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Consider a 1-D image f(x) = [10 10 10 10 40 40 40 20 20]. Calculate first and second order derivatives. Locate edge positions.</div>
+      <div class="pyq-meta">2024 · Part B Q2 · 4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide Answer' : '▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          f(x) = [10, 10, 10, 10, 40, 40, 40, 20, 20]<br><br>
+          <strong>1st derivative:</strong> f'(x) = f(x+1) - f(x)<br>
+          <pre>
+Position:  x=1  x=2  x=3  x=4  x=5  x=6  x=7  x=8
+f'(x):       0    0    0   30    0    0  -20    0
+</pre>
+          <strong>2nd derivative:</strong> f''(x) = f(x+1) - 2f(x) + f(x-1)<br>
+          <pre>
+Position:  x=2  x=3  x=4  x=5  x=6  x=7  x=8
+f''(x):      0    0   30  -30    0  -20   20
+</pre>
+          <strong>Edge Detection:</strong><br>
+          • First-order: Peak at x=4 (f'=30) → Edge at <strong>position 4-5</strong> (10→40 transition)<br>
+          • First-order: Peak at x=7 (|f'|=20) → Edge at <strong>position 7-8</strong> (40→20 transition)<br>
+          • Second-order: Zero-crossings at x=5 (30→-30) and x=8 (-20→+20) confirm same edge locations.<br><br>
+          <strong>Conclusion:</strong> 1st derivative detects edges by local maxima; 2nd derivative detects by zero-crossings. Both approaches agree on edge locations at transitions 10→40 and 40→20.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- THRESHOLDING -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="section" id="threshold">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2 class="section-title">Thresholding</h2>
+    <span class="importance-pill badge badge-red">80% · Part B/C</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What is Thresholding?</h3>
+    <p><span class="highlight">Thresholding</span> is the simplest and most widely used image segmentation method. It converts a grayscale image into a binary image by comparing each pixel's intensity to a threshold value T.</p>
+
+    <div class="formula-box">
+      <span class="label">Basic Thresholding</span>
+      <div class="formula">g(x,y) = 1  if  f(x,y) > T</div>
+      <div class="formula">g(x,y) = 0  if  f(x,y) ≤ T</div>
+      <div class="note">Result is a binary image: 1 = object (foreground), 0 = background</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 580 160" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <!-- Histogram with threshold line -->
+        <text x="10" y="20" fill="#8892a8" font-family="IBM Plex Mono" font-size="11">Bimodal Histogram + Threshold Selection</text>
+        <!-- Axes -->
+        <line x1="40" y1="140" x2="280" y2="140" stroke="#2a3045" stroke-width="1.5"/>
+        <line x1="40" y1="30" x2="40" y2="140" stroke="#2a3045" stroke-width="1.5"/>
+        <text x="160" y="158" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Intensity</text>
+        <text x="25" y="90" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9" transform="rotate(-90,25,90)">Count</text>
+        <!-- Background peak -->
+        <ellipse cx="100" cy="100" rx="40" ry="60" fill="#4a9af030" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="100" y="145" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="9">background</text>
+        <!-- Object peak -->
+        <ellipse cx="200" cy="100" rx="40" ry="55" fill="#f04a7a30" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="200" y="145" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">object</text>
+        <!-- Threshold line -->
+        <line x1="150" y1="30" x2="150" y2="140" stroke="#f0c44a" stroke-width="2" stroke-dasharray="5,4"/>
+        <text x="152" y="45" fill="#f0c44a" font-family="IBM Plex Mono" font-size="10">T</text>
+        <!-- Arrow for result -->
+        <polygon points="300,85 330,75 330,95" fill="#4af0b4"/>
+        <rect x="340" y="50" width="220" height="80" rx="8" fill="#1c2130" stroke="#4af0b4" stroke-width="1"/>
+        <rect x="355" y="65" width="85" height="50" rx="4" fill="#070a10"/>
+        <text x="397" y="95" text-anchor="middle" fill="#2a3045" font-family="IBM Plex Mono" font-size="20">0 0 0</text>
+        <rect x="450" y="65" width="95" height="50" rx="4" fill="#e8eaf2"/>
+        <text x="497" y="95" text-anchor="middle" fill="#1c2130" font-family="IBM Plex Mono" font-size="20">1 1 1</text>
+        <text x="450" y="148" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">Binary Output</text>
+      </svg>
+      <div class="diagram-cap">Fig 4.1 — Bimodal histogram: threshold T placed in valley separates background from object</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Types of Thresholding</h3>
+
+    <h4>1. Global Thresholding (Single T for entire image)</h4>
+    <p>One threshold applied to the whole image. Works well when the histogram is <strong>bimodal</strong> (two clear peaks with a valley).</p>
+    <p><em>Example: Document scanning — text is dark (object), paper is white (background). Clear bimodal histogram.</em></p>
+
+    <h4>2. Optimal (Otsu's) Thresholding</h4>
+    <p>Automatically finds the best threshold T by <strong>maximizing the between-class variance</strong> (variance between foreground and background classes).</p>
+
+    <div class="formula-box">
+      <span class="label">Otsu's Method</span>
+      <div class="formula">σ²_B(T) = ω₁(T)·ω₂(T)·[μ₁(T) - μ₂(T)]²</div>
+      <div class="note">ω₁, ω₂ = class probabilities; μ₁, μ₂ = class means</div>
+      <div class="formula" style="margin-top:8px">Find T* = arg max [σ²_B(T)]</div>
+    </div>
+
+    <h4>3. Local (Adaptive) Thresholding</h4>
+    <p>Different thresholds used for different regions of the image. Useful when illumination is non-uniform. T(x,y) varies across the image.</p>
+    <p><em>Example: A document photographed under uneven light — different T needed for top and bottom portions.</em></p>
+
+    <h4>4. Multiple Thresholding</h4>
+    <p>Two or more thresholds used to segment image into multiple classes.</p>
+    <div class="formula-box">
+      <div class="formula">g(x,y) = a  if  f(x,y) > T₂</div>
+      <div class="formula">g(x,y) = b  if  T₁ < f(x,y) ≤ T₂</div>
+      <div class="formula">g(x,y) = c  if  f(x,y) ≤ T₁</div>
+    </div>
+  </div>
+
+  <div class="tip-box connect">
+    <div class="tip-icon">🔗</div>
+    <div class="tip-content">
+      <div class="tip-title">Connection: Thresholding ↔ Unit 3 Histogram Processing</div>
+      <p>Thresholding is directly related to <strong>histogram processing (Unit 3)</strong>. The histogram shape tells you where to place T. A bimodal histogram (two humps) = easy thresholding. A flat/unimodal histogram = use Otsu's. <strong>Histogram equalization (Unit 3)</strong> can be applied BEFORE thresholding to improve results on poorly-contrasted images.</p>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Thresholding</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Discuss image segmentation based on various thresholding techniques.</div>
+      <div class="pyq-meta">May 2025 · Part B Q7 · 4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide Answer' : '▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Image Segmentation by Thresholding</strong><br><br>
+          Thresholding converts a grayscale image f(x,y) to binary g(x,y) based on a threshold T.<br><br>
+          <strong>1. Global Thresholding:</strong><br>
+          Single T applied to entire image. g(x,y) = 1 if f(x,y) > T, else 0.<br>
+          Steps: (a) Choose initial T = mean intensity. (b) Segment image using T. (c) Compute means μ₁, μ₂ of both groups. (d) Update T = (μ₁+μ₂)/2. (e) Repeat until T converges.<br><br>
+          <strong>2. Otsu's Optimal Thresholding:</strong><br>
+          Selects T that maximizes between-class variance σ²_B = ω₁ω₂(μ₁-μ₂)². Automatic, no manual selection needed.<br><br>
+          <strong>3. Local/Adaptive Thresholding:</strong><br>
+          T varies with location. T(x,y) computed for each pixel using local neighborhood statistics (local mean or Gaussian-weighted mean). Handles uneven illumination.<br><br>
+          <strong>4. Multiple Thresholding:</strong><br>
+          Two thresholds T₁, T₂ create three classes. Used in images with multiple distinct objects.<br><br>
+          <strong>Application:</strong> Document image binarization, medical image segmentation (separating lesions from tissue).
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- EDGE/BOUNDARY LINKING -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="section" id="boundary-link">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2 class="section-title">Edge &amp; Boundary Linking</h2>
+    <span class="importance-pill badge badge-yellow">75% · Part B</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Why Edge Linking?</h3>
+    <p>Edge detection operators produce pixels that ideally correspond to edges. But in practice, due to noise, the output is <strong>broken, disconnected edge segments</strong>. Edge linking joins these fragments to form continuous, closed boundaries.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>Local Processing (Local Edge Linking)</h3>
+    <p>Look at a small neighborhood around each edge pixel (x,y). Link it to a neighboring edge pixel (s,t) if both conditions hold:</p>
+
+    <div class="formula-box">
+      <span class="label">Local Linking Criteria</span>
+      <div class="formula">Condition 1 (Magnitude): |M(x,y) - M(s,t)| ≤ E  (similar strength)</div>
+      <div class="formula" style="margin-top:8px">Condition 2 (Direction): |α(x,y) - α(s,t)| ≤ A  (similar orientation)</div>
+      <div class="note">E = magnitude tolerance, A = angle tolerance (typically 45°). Both must be satisfied to link pixels.</div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-label">📌 Example</div>
+      <p>Pixel P1 at (x,y): M=45, α=30°. Pixel P2 at (x+1,y): M=43, α=35°.<br>
+      With E=5, A=15°: |45-43|=2 ≤ 5 ✓, |30-35|=5° ≤ 15° ✓ → <strong>Link P1 and P2.</strong></p>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Global Processing — Graph-Based Edge Linking</h3>
+    <p>Represents edge pixels as <strong>nodes in a graph</strong> and finds the best path (boundary) through cost-function minimization. More powerful than local linking but computationally expensive.</p>
+    <p>Steps:</p>
+    <div class="steps">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Convert image to a <strong>directed graph</strong>. Each pixel = a node. Edge cost = (1 - gradient magnitude) — high gradient = low cost.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Apply <strong>dynamic programming</strong> or Dijkstra's algorithm to find the minimum cost path from start to end node.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">The minimum cost path = the optimal boundary of the object.</div></div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Edge Linking</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. How do you link edge pixels through global processing? Also explain Hough Transforms.</div>
+      <div class="pyq-meta">2024 · Part B Q7 · 4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide Answer' : '▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Global Edge Linking via Graph Methods:</strong><br><br>
+          After edge detection, the output contains many isolated edge segments. Global processing uses a graph-theoretic approach:<br>
+          1. Create a directed weighted graph where each edge pixel is a node.<br>
+          2. Assign cost c(i,j) to each edge between nodes. Low cost = high gradient = likely edge. c(i,j) = G_max - M(i,j).<br>
+          3. Apply dynamic programming to find the minimum cost path from a start point to an end point.<br>
+          4. The resulting path represents the linked boundary.<br><br>
+          <em>Advantage:</em> Considers global image information, not just local neighborhoods. Finds globally optimal boundaries.<br><br>
+          <strong>Hough Transform:</strong> (See next section for full details)<br>
+          Hough Transform is a global technique that detects lines, circles, or other parametric shapes by transforming the problem to a parameter (accumulator) space. Each edge pixel votes for all possible lines passing through it. Lines with the most votes = actual lines in the image.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- HOUGH TRANSFORM -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="section" id="hough">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2 class="section-title">Hough Transform</h2>
+    <span class="importance-pill badge badge-red">🔥 90% — Very Important</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Core Idea — Parameter Space Voting</h3>
+    <p>The <span class="highlight">Hough Transform</span> detects shapes (lines, circles, ellipses) in an image by using a <strong>voting procedure</strong>. Instead of working in image (x,y) space, it works in <strong>parameter space</strong>.</p>
+    <p><strong>Key insight:</strong> All lines passing through a point (x₀, y₀) satisfy y₀ = mx₀ + c for different (m,c) pairs. In (m,c) parameter space, this point (x₀,y₀) maps to a <em>line</em>!</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>Hough Transform for Lines — Normal Form (Preferred)</h3>
+    <p>The slope-intercept form y = mx + c has problems with vertical lines (m → ∞). Instead, use <strong>normal (Hessian) form</strong>:</p>
+
+    <div class="formula-box">
+      <span class="label">Normal Form of a Line (Used in Hough)</span>
+      <div class="formula">ρ = x·cosθ + y·sinθ</div>
+      <div class="note">ρ = perpendicular distance from origin to line</div>
+      <div class="note">θ = angle of the perpendicular from x-axis (0° to 180°)</div>
+      <div class="note">Range: -D ≤ ρ ≤ D where D = diagonal length of image</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 580 200" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <!-- Image space -->
+        <text x="10" y="15" fill="#4af0b4" font-family="IBM Plex Mono" font-size="11">IMAGE SPACE (x,y)</text>
+        <line x1="20" y1="180" x2="240" y2="180" stroke="#2a3045" stroke-width="1.5"/>
+        <line x1="20" y1="30" x2="20" y2="180" stroke="#2a3045" stroke-width="1.5"/>
+        <text x="245" y="183" fill="#8892a8" font-family="IBM Plex Mono" font-size="10">x</text>
+        <text x="22" y="25" fill="#8892a8" font-family="IBM Plex Mono" font-size="10">y</text>
+        <!-- Points on a line -->
+        <line x1="40" y1="80" x2="220" y2="140" stroke="#4a9af050" stroke-width="1" stroke-dasharray="4,3"/>
+        <circle cx="60" cy="86" r="5" fill="#f04a7a"/>
+        <circle cx="120" cy="106" r="5" fill="#f0c44a"/>
+        <circle cx="190" cy="130" r="5" fill="#4af0b4"/>
+        <text x="53" y="78" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">P₁</text>
+        <text x="113" y="98" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">P₂</text>
+        <text x="193" y="122" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">P₃</text>
+        <!-- ρ line -->
+        <line x1="20" y1="180" x2="100" y2="95" stroke="#fff" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <text x="50" y="150" fill="#fff" font-family="IBM Plex Mono" font-size="9">ρ</text>
+        <text x="90" y="90" fill="#fff" font-family="IBM Plex Mono" font-size="9">θ</text>
+        <!-- Arrow -->
+        <polygon points="280,105 310,95 310,115" fill="#4af0b4"/>
+        <text x="285" y="140" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">Transform</text>
+        <!-- Parameter space -->
+        <text x="325" y="15" fill="#4af0b4" font-family="IBM Plex Mono" font-size="11">PARAMETER SPACE (θ,ρ)</text>
+        <line x1="330" y1="180" x2="565" y2="180" stroke="#2a3045" stroke-width="1.5"/>
+        <line x1="330" y1="30" x2="330" y2="180" stroke="#2a3045" stroke-width="1.5"/>
+        <text x="566" y="183" fill="#8892a8" font-family="IBM Plex Mono" font-size="10">θ</text>
+        <text x="332" y="25" fill="#8892a8" font-family="IBM Plex Mono" font-size="10">ρ</text>
+        <!-- Sinusoids for each point -->
+        <path d="M330,120 Q390,60 450,120 Q510,180 565,120" stroke="#f04a7a" stroke-width="1.5" fill="none"/>
+        <path d="M330,100 Q390,50 450,110 Q510,170 565,100" stroke="#f0c44a" stroke-width="1.5" fill="none"/>
+        <path d="M330,80 Q390,40 450,100 Q510,160 565,80" stroke="#4af0b4" stroke-width="1.5" fill="none"/>
+        <!-- Intersection point -->
+        <circle cx="450" cy="113" r="7" fill="#fff" stroke="#f0c44a" stroke-width="2"/>
+        <text x="455" y="108" fill="#fff" font-family="IBM Plex Mono" font-size="9">(θ*,ρ*)</text>
+        <text x="435" y="195" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">All 3 curves intersect = detected line!</text>
+      </svg>
+      <div class="diagram-cap">Fig 6.1 — Three collinear points map to sinusoids in (θ,ρ) space; their intersection gives the line parameters</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Algorithm — Hough Transform Steps</h3>
+    <div class="steps">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Edge Detection:</strong> Apply Sobel/Canny to get binary edge image.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Create Accumulator Array:</strong> H[ρ, θ] = 0 (2D array over quantized ρ and θ values). This is also called the <strong>Hough space</strong>.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>Vote:</strong> For each edge pixel (x,y), for each θ from 0° to 180°, compute ρ = x·cosθ + y·sinθ, then increment H[ρ,θ]++.</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text"><strong>Find Peaks:</strong> Find local maxima in H[ρ,θ]. Each peak (ρ*,θ*) = a detected line in the image.</div></div>
+      <div class="step-item"><div class="step-num">5</div><div class="step-text"><strong>Reconstruct:</strong> Convert (ρ*,θ*) back to image space using ρ = x·cosθ + y·sinθ.</div></div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Limitations of Hough Transform</h3>
+    <ul>
+      <li>Computationally expensive for complex shapes (large accumulator arrays)</li>
+      <li>Quantization error in accumulator can cause missed or spurious detections</li>
+      <li>For circles/ellipses, parameter space becomes 3D or 5D — very costly</li>
+      <li>Cannot detect shapes with no known parametric model</li>
+      <li>Sensitive to noise in the edge detection step</li>
+    </ul>
+  </div>
+
+  <div class="tip-box trick">
+    <div class="tip-icon">🧠</div>
+    <div class="tip-content">
+      <div class="tip-title">Exam Trick — Collinearity Check with Hough</div>
+      <p>To check if points are collinear using Hough: For each point, compute ρ = x·cosθ + y·sinθ for several θ values. Plot in (θ,ρ) space. If all curves intersect at ONE point → collinear. If no common intersection → not collinear. This is a standard RTU numerical!</p>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Hough Transform</div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Discuss Hough transformation concept + check if points (1,0), (2,1), (3,1), (4,1), (3,2) are collinear. Also mention limitations.</div>
+      <div class="pyq-meta">June 2023 · Part C Q3 · 10 marks ⭐ Most Important</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide Answer' : '▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Hough Transform — Concept:</strong><br>
+          The Hough Transform detects lines (and shapes) by mapping image space to parameter space. For a line ρ = x·cosθ + y·sinθ, each image point (x,y) contributes a sinusoidal curve in (θ,ρ) space. Collinear points produce curves that intersect at the same (θ*,ρ*), which is the Hough parameter of the line containing them.<br><br>
+
+          <strong>Collinearity Check for Given Points:</strong><br>
+          Use y = mx + c form: If all points lie on y = mx + c, then in (m,c) space, each point gives a line c = -mx + y, and all lines intersect at (m*,c*).<br><br>
+
+          For points: (1,0), (2,1), (3,1), (4,1), (3,2)<br>
+          Check (1,0): c = -m + 0 → c = -m<br>
+          Check (2,1): c = -2m + 1<br>
+          Intersection of these two: -m = -2m + 1 → m = 1, c = -1<br>
+          Line: y = x - 1<br><br>
+          Verify all points on y = x - 1:<br>
+          (1,0): 0 = 1-1 = 0 ✓<br>
+          (2,1): 1 = 2-1 = 1 ✓<br>
+          (3,1): 1 = 3-1 = 2 ✗ <em>(Not on line!)</em><br>
+          (4,1): 1 = 4-1 = 3 ✗<br>
+          (3,2): 2 = 3-1 = 2 ✓<br><br>
+          <strong>Conclusion:</strong> Points (1,0), (2,1), (3,2) are collinear on y = x-1. Points (3,1) and (4,1) are NOT on this line → <strong>All 5 points are NOT collinear.</strong><br><br>
+
+          <strong>Limitations of Hough Transform:</strong><br>
+          1. Computationally expensive — large accumulator arrays needed<br>
+          2. Quantization errors in discretizing (ρ,θ) space reduce accuracy<br>
+          3. For circles: 3D parameter space (a,b,r) — very memory-intensive<br>
+          4. Noise in edge detection step severely affects performance<br>
+          5. Cannot detect non-parametric shapes<br>
+          6. Difficulty with closely spaced parallel lines
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What is the role of Hough Transform in global processing?</div>
+      <div class="pyq-meta">May 2025 · Part A Q4 · 2 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide Answer' : '▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          Hough Transform is a global edge-linking technique that detects lines/shapes by transforming image space to parameter (ρ,θ) space. Each edge pixel votes for all possible lines through it. The accumulator array H[ρ,θ] counts votes. Local maxima in H correspond to actual lines — linking all contributing edge pixels globally into continuous boundaries. It connects isolated edge points that belong to the same geometric structure, providing a complete global boundary description.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- REGION BASED SEGMENTATION -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="section" id="region">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2 class="section-title">Region Based Segmentation</h2>
+    <span class="importance-pill badge badge-red">🔥 85% · Part B/C</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Concept</h3>
+    <p>Region-based methods group pixels with <strong>similar properties</strong> into regions. Unlike edge detection (which finds boundaries), region methods directly find homogeneous areas.</p>
+    <p><strong>Predicate P(R):</strong> A logical condition that must be true for all pixels in a region. Example: P(R) = "all pixels in R have intensity difference ≤ 10".</p>
+
+    <div class="formula-box">
+      <span class="label">Segmentation Conditions</span>
+      <div class="formula">① ∪Rᵢ = Image  (regions cover entire image)</div>
+      <div class="formula">② Rᵢ ∩ Rⱼ = ∅  for i ≠ j  (regions don't overlap)</div>
+      <div class="formula">③ P(Rᵢ) = TRUE  for all i  (each region satisfies predicate)</div>
+      <div class="formula">④ P(Rᵢ ∪ Rⱼ) = FALSE  for adjacent Rᵢ, Rⱼ  (merging would violate predicate)</div>
+      <div class="formula">⑤ Each region Rᵢ must be connected</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ Region Growing</h3>
+    <p>Starts from one or more <strong>seed pixels</strong> and grows the region by adding neighboring pixels that satisfy the predicate.</p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 560 180" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="10" y="15" fill="#4af0b4" font-family="IBM Plex Mono" font-size="10">Region Growing — Step by Step</text>
+        <!-- Step 1 -->
+        <rect x="10" y="25" width="80" height="80" rx="4" fill="#0f1a2e" stroke="#2a3045" stroke-width="1"/>
+        <text x="50" y="120" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Step 1: Seed</text>
+        <g transform="translate(10,25)">
+          <rect x="27" y="27" width="26" height="26" fill="#f0c44a" rx="2"/>
+          <text x="40" y="44" text-anchor="middle" fill="#000" font-family="IBM Plex Mono" font-size="9">SEED</text>
+        </g>
+        <polygon points="96,65 114,58 114,72" fill="#4af0b4"/>
+        <!-- Step 2 -->
+        <rect x="120" y="25" width="80" height="80" rx="4" fill="#0f1a2e" stroke="#2a3045" stroke-width="1"/>
+        <text x="160" y="120" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Step 2: Grow</text>
+        <g transform="translate(120,25)">
+          <rect x="27" y="27" width="26" height="26" fill="#f0c44a" rx="2"/>
+          <rect x="1" y="27" width="26" height="26" fill="#f0c44a88" rx="2"/>
+          <rect x="27" y="1" width="26" height="26" fill="#f0c44a88" rx="2"/>
+          <rect x="53" y="27" width="26" height="26" fill="#4a9af088" rx="2"/>
+          <text x="40" y="44" text-anchor="middle" fill="#000" font-family="IBM Plex Mono" font-size="8">S</text>
+        </g>
+        <polygon points="206,65 224,58 224,72" fill="#4af0b4"/>
+        <!-- Step 3 -->
+        <rect x="230" y="25" width="80" height="80" rx="4" fill="#0f1a2e" stroke="#2a3045" stroke-width="1"/>
+        <text x="270" y="120" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Final Region</text>
+        <g transform="translate(230,25)">
+          <rect x="1" y="1" width="78" height="78" fill="#f0c44a20" rx="2"/>
+          <rect x="1" y="27" width="78" height="26" fill="#f0c44a40" rx="2"/>
+          <rect x="27" y="1" width="26" height="78" fill="#f0c44a40" rx="2"/>
+          <rect x="27" y="27" width="26" height="26" fill="#f0c44a" rx="2"/>
+          <text x="40" y="44" text-anchor="middle" fill="#000" font-family="IBM Plex Mono" font-size="8">Region</text>
+        </g>
+        <!-- Description -->
+        <rect x="330" y="25" width="220" height="130" rx="8" fill="#1c2130" stroke="#4af0b4" stroke-width="1"/>
+        <text x="440" y="45" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="10">Algorithm:</text>
+        <text x="340" y="65" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">1. Select seed pixel(s)</text>
+        <text x="340" y="82" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">2. Put seed in queue</text>
+        <text x="340" y="99" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">3. For each neighbor:</text>
+        <text x="350" y="114" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">if P(neighbor) = TRUE</text>
+        <text x="350" y="129" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">→ add to region+queue</text>
+        <text x="340" y="146" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">4. Repeat until queue empty</text>
+      </svg>
+      <div class="diagram-cap">Fig 7.1 — Region Growing: starts from seed, expands to similar neighbors</div>
+    </div>
+
+    <h4>Seed Selection:</h4>
+    <ul>
+      <li>Manual selection by user</li>
+      <li>All pixels above/below a certain intensity</li>
+      <li>Small homogeneous areas found by initial scan</li>
+    </ul>
+
+    <h4>Stopping Criteria:</h4>
+    <ul>
+      <li>No more neighboring pixels satisfy the predicate</li>
+      <li>Region reaches a certain size</li>
+      <li>Predicate based on intensity difference, texture, color similarity</li>
+    </ul>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ Region Splitting and Merging</h3>
+    <p>Combines a <strong>top-down</strong> split approach with a <strong>bottom-up</strong> merge approach. Often implemented using a <strong>Quadtree</strong> data structure.</p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 560 200" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <!-- Quadtree structure -->
+        <text x="10" y="20" fill="#4af0b4" font-family="IBM Plex Mono" font-size="11">Quadtree — Split then Merge</text>
+        <!-- Full image -->
+        <rect x="20" y="30" width="120" height="120" rx="4" fill="#1c2130" stroke="#f0c44a" stroke-width="2"/>
+        <text x="80" y="95" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">P(R)=FALSE</text>
+        <text x="80" y="108" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">→ SPLIT</text>
+        <polygon points="145,90 165,83 165,97" fill="#4af0b4"/>
+        <!-- Split image -->
+        <rect x="170" y="30" width="60" height="60" rx="2" fill="#4af0b420" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="200" y="65" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="8">P=T</text>
+        <rect x="230" y="30" width="60" height="60" rx="2" fill="#f04a7a20" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="260" y="55" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">P=F</text>
+        <text x="260" y="68" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">→split</text>
+        <rect x="170" y="90" width="60" height="60" rx="2" fill="#4af0b420" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="200" y="125" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="8">P=T</text>
+        <rect x="230" y="90" width="60" height="60" rx="2" fill="#4af0b420" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="260" y="125" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="8">P=T</text>
+        <polygon points="296,90 316,83 316,97" fill="#4af0b4"/>
+        <!-- After merge -->
+        <rect x="320" y="30" width="200" height="140" rx="4" fill="#1c2130" stroke="#2a3045" stroke-width="1"/>
+        <rect x="325" y="35" width="90" height="65" rx="2" fill="#4af0b430" stroke="#4af0b4" stroke-width="1"/>
+        <text x="370" y="72" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="8">Merged R1</text>
+        <rect x="325" y="100" width="90" height="65" rx="2" fill="#4af0b430" stroke="#4af0b4" stroke-width="1"/>
+        <text x="370" y="137" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="8">Merged R2</text>
+        <rect x="415" y="35" width="100" height="130" rx="2" fill="#f04a7a20" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="465" y="100" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">Sub-regions</text>
+        <text x="465" y="113" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">(P=FALSE)</text>
+        <text x="175" y="185" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">Split step</text>
+        <text x="415" y="185" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">After merge: final segments</text>
+      </svg>
+      <div class="diagram-cap">Fig 7.2 — Split & Merge: regions failing predicate are split; adjacent uniform regions are merged</div>
+    </div>
+
+    <h4>Algorithm:</h4>
+    <div class="steps">
+      <div class="step-item"><div class="step-num">S</div><div class="step-text"><strong>Split Phase:</strong> If P(R) = FALSE for any region R, split it into 4 equal quadrants. Repeat recursively until P = TRUE for all regions or regions become single pixels.</div></div>
+      <div class="step-item"><div class="step-num">M</div><div class="step-text"><strong>Merge Phase:</strong> For any two adjacent regions Rᵢ, Rⱼ, if P(Rᵢ ∪ Rⱼ) = TRUE, merge them. Repeat until no more merges are possible.</div></div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">💡</div>
+      <div class="tip-content">
+        <div class="tip-title">Key Difference — Growing vs. Splitting</div>
+        <p><strong>Region Growing</strong> = bottom-up (starts from pixels, builds up). <strong>Splitting</strong> = top-down (starts from whole image, breaks down). <strong>Split+Merge</strong> = combines both for best results. RTU often asks you to "compare" — use this distinction as your answer core.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Region Segmentation</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain the fundamental steps of region growing and region splitting algorithms in region-based segmentation.</div>
+      <div class="pyq-meta">June 2023 · Part B Q6 · 4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide Answer' : '▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Region Growing Algorithm:</strong><br>
+          1. <em>Seed Selection:</em> Choose initial seed pixels (manually or automatically).<br>
+          2. <em>Initialization:</em> Mark seed pixels as the starting region R.<br>
+          3. <em>Growing:</em> Examine all pixels neighboring R. If a neighbor pixel satisfies predicate P (e.g., |f(neighbor) - f(seed)| ≤ threshold T), add it to R.<br>
+          4. <em>Repeat:</em> Continue until no more pixels can be added.<br>
+          5. <em>Label:</em> All pixels in R belong to one segment. Unvisited pixels may be new seeds for other regions.<br><br>
+          Key consideration: Seed selection is critical. Predicate P determines what constitutes "similar" pixels.<br><br>
+
+          <strong>Region Splitting Algorithm (using Quadtree):</strong><br>
+          1. Start with the entire image as one region R.<br>
+          2. If P(R) = FALSE (region is not homogeneous), split R into 4 equal quadrants Q₁, Q₂, Q₃, Q₄.<br>
+          3. Apply step 2 recursively to each quadrant.<br>
+          4. Stop splitting when P(Qᵢ) = TRUE or region = single pixel.<br>
+          5. <em>Merge step:</em> For adjacent regions Rᵢ, Rⱼ: if P(Rᵢ ∪ Rⱼ) = TRUE, merge them.<br>
+          6. Repeat merge until no more adjacent regions can be merged.<br><br>
+          Result: Image partitioned into maximal homogeneous regions. Over-segmentation may occur, which the merge step corrects.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- BOUNDARY REPRESENTATION -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="section" id="boundary-rep">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <h2 class="section-title">Boundary Representation</h2>
+    <span class="importance-pill badge badge-yellow">75% · Part B</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Why Represent Boundaries?</h3>
+    <p>After segmentation, we need to <strong>represent and describe</strong> the boundaries of regions for further analysis (shape recognition, pattern matching, compression). Two main approaches: <span class="highlight">Chain codes</span> and <span class="highlight">Polygonal approximation</span>.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ Chain Code (Freeman Chain Code)</h3>
+    <p>Represents a boundary by a connected sequence of <strong>directional codes</strong>. Each step from one boundary pixel to the next is encoded as a number (0–7) indicating the direction.</p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 580 180" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <!-- 8-direction compass -->
+        <text x="10" y="20" fill="#4af0b4" font-family="IBM Plex Mono" font-size="11">8-connected Direction Codes</text>
+        <circle cx="80" cy="100" r="40" fill="#1c2130" stroke="#2a3045" stroke-width="1.5"/>
+        <text x="80" y="104" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono" font-size="12" font-weight="bold">CENTER</text>
+        <!-- Directions -->
+        <text x="117" y="104" fill="#4af0b4" font-family="IBM Plex Mono" font-size="11" font-weight="bold">0 →</text>
+        <text x="108" y="70" fill="#f0c44a" font-family="IBM Plex Mono" font-size="11" font-weight="bold">1 ↗</text>
+        <text x="73" y="58" fill="#4a9af0" font-family="IBM Plex Mono" font-size="11" font-weight="bold">2 ↑</text>
+        <text x="28" y="70" fill="#f04a7a" font-family="IBM Plex Mono" font-size="11" font-weight="bold">3 ↖</text>
+        <text x="18" y="104" fill="#4af0b4" font-family="IBM Plex Mono" font-size="11" font-weight="bold">4 ←</text>
+        <text x="22" y="135" fill="#f0c44a" font-family="IBM Plex Mono" font-size="11" font-weight="bold">5 ↙</text>
+        <text x="63" y="148" fill="#4a9af0" font-family="IBM Plex Mono" font-size="11" font-weight="bold">6 ↓</text>
+        <text x="102" y="138" fill="#f04a7a" font-family="IBM Plex Mono" font-size="11" font-weight="bold">7 ↘</text>
+
+        <!-- Example boundary -->
+        <text x="180" y="20" fill="#4af0b4" font-family="IBM Plex Mono" font-size="11">Example Chain Code</text>
+        <g transform="translate(180,30)">
+          <!-- Grid -->
+          <line x1="20" y1="20" x2="140" y2="20" stroke="#2a3045" stroke-width="0.5"/>
+          <line x1="20" y1="40" x2="140" y2="40" stroke="#2a3045" stroke-width="0.5"/>
+          <line x1="20" y1="60" x2="140" y2="60" stroke="#2a3045" stroke-width="0.5"/>
+          <line x1="20" y1="80" x2="140" y2="80" stroke="#2a3045" stroke-width="0.5"/>
+          <line x1="20" y1="100" x2="140" y2="100" stroke="#2a3045" stroke-width="0.5"/>
+          <line x1="20" y1="20" x2="20" y2="100" stroke="#2a3045" stroke-width="0.5"/>
+          <line x1="40" y1="20" x2="40" y2="100" stroke="#2a3045" stroke-width="0.5"/>
+          <line x1="60" y1="20" x2="60" y2="100" stroke="#2a3045" stroke-width="0.5"/>
+          <line x1="80" y1="20" x2="80" y2="100" stroke="#2a3045" stroke-width="0.5"/>
+          <line x1="100" y1="20" x2="100" y2="100" stroke="#2a3045" stroke-width="0.5"/>
+          <line x1="120" y1="20" x2="120" y2="100" stroke="#2a3045" stroke-width="0.5"/>
+          <line x1="140" y1="20" x2="140" y2="100" stroke="#2a3045" stroke-width="0.5"/>
+          <!-- Boundary pixels -->
+          <circle cx="40" cy="60" r="7" fill="#f0c44a"/>
+          <circle cx="60" cy="40" r="7" fill="#f0c44a"/>
+          <circle cx="80" cy="40" r="7" fill="#f0c44a"/>
+          <circle cx="100" cy="60" r="7" fill="#f0c44a"/>
+          <circle cx="80" cy="80" r="7" fill="#f0c44a"/>
+          <circle cx="60" cy="80" r="7" fill="#f0c44a"/>
+          <!-- Path -->
+          <polyline points="40,60 60,40 80,40 100,60 80,80 60,80 40,60" stroke="#f0c44a" stroke-width="1.5" fill="none"/>
+          <!-- Start marker -->
+          <text x="28" y="65" fill="#4af0b4" font-family="IBM Plex Mono" font-size="8">START</text>
+          <!-- Labels -->
+          <text x="47" y="45" fill="#4a9af0" font-family="IBM Plex Mono" font-size="8">1</text>
+          <text x="68" y="35" fill="#4a9af0" font-family="IBM Plex Mono" font-size="8">0</text>
+          <text x="88" y="48" fill="#4a9af0" font-family="IBM Plex Mono" font-size="8">7</text>
+          <text x="96" y="72" fill="#4a9af0" font-family="IBM Plex Mono" font-size="8">5</text>
+          <text x="73" y="85" fill="#4a9af0" font-family="IBM Plex Mono" font-size="8">4</text>
+          <text x="46" y="78" fill="#4a9af0" font-family="IBM Plex Mono" font-size="8">3</text>
+        </g>
+        <rect x="350" y="35" width="220" height="125" rx="8" fill="#1c2130" stroke="#2a3045" stroke-width="1"/>
+        <text x="460" y="58" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="10">Chain Code: 1,0,7,5,4,3</text>
+        <text x="360" y="80" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">• Compact representation</text>
+        <text x="360" y="96" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">• Translation invariant</text>
+        <text x="360" y="112" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">• Rotation: shift start</text>
+        <text x="360" y="128" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">• Scale: resample grid</text>
+        <text x="360" y="144" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">• 4-connected: only 0,2,4,6</text>
+      </svg>
+      <div class="diagram-cap">Fig 8.1 — Chain code example: hexagonal boundary encoded as 1,0,7,5,4,3</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">4-connectivity codes → directions</span>
+      <div class="formula">0 = right (+x), 1 = up (+y), 2 = left (-x), 3 = down (-y)</div>
+      <span class="label" style="margin-top:10px">8-connectivity codes → directions</span>
+      <div class="formula">0=E, 1=NE, 2=N, 3=NW, 4=W, 5=SW, 6=S, 7=SE</div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">⚡</div>
+      <div class="tip-content">
+        <div class="tip-title">Rotation Invariance Trick</div>
+        <p>To make chain code <strong>rotation invariant</strong>: Compute the <em>first difference</em> of the chain code (subtract consecutive pairs mod 8). This gives the same result regardless of rotation. Example: Code 1,0,7,5,4,3 → differences (0-1)mod8=7, (7-0)mod8=7, (5-7)mod8=6, (4-5)mod8=7, (3-4)mod8=7, (1-3)mod8=6 → first diff = 7,7,6,7,7,6</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐ Polygonal Approximation</h3>
+    <p>Represents a boundary by a polygon — a set of <strong>straight-line segments</strong>. The goal is to use the minimum number of line segments while keeping approximation error below a threshold.</p>
+    <p><strong>Key idea:</strong> A smooth curve/boundary is approximated by a polygon. The vertices of the polygon are selected boundary points.</p>
+
+    <h4>Minimum Perimeter Polygon (MPP):</h4>
+    <p>Enclose boundary in a grid of small cells (concentric squares). The MPP is the polygon of minimum perimeter that passes through the grid, fitting inside outer cell edges.</p>
+
+    <h4>Merging Techniques:</h4>
+    <ul>
+      <li><strong>Start with all boundary pixels as vertices.</strong></li>
+      <li>Compute the line between consecutive vertices.</li>
+      <li>If all intermediate points are within ε distance from the line → merge (remove intermediate vertices).</li>
+      <li>Repeat until no more merges possible.</li>
+    </ul>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Boundary Representation</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain any two boundary representation schemes and illustrate with example.</div>
+      <div class="pyq-meta">2024 & May 2025 · Part B Q6 · 4 marks each ⭐ Repeated!</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide Answer' : '▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>1. Chain Code Representation:</strong><br>
+          Chain code represents a boundary as a sequence of directional codes from one boundary pixel to the next. Uses 4-connectivity (codes 0,1,2,3) or 8-connectivity (codes 0–7).<br><br>
+          Directions (8-connectivity): 0=East, 1=NE, 2=North, 3=NW, 4=West, 5=SW, 6=South, 7=SE<br><br>
+          <em>Example:</em> Consider a square boundary (3×3) starting at bottom-left pixel, going clockwise:<br>
+          Path: bottom-left → bottom-right → top-right → top-left → bottom-left<br>
+          Chain Code: 0, 0, 2, 2, 4, 4, 6, 6 (4-connectivity)<br>
+          [Draw a simple grid with numbered pixels and show the path]<br><br>
+          Properties: Compact storage, translation invariant. For rotation invariance, use first difference of chain code.<br><br>
+
+          <strong>2. Polygonal Approximation:</strong><br>
+          Approximates a boundary by a polygon. Selects a minimal set of boundary points as vertices such that approximation error ≤ ε.<br><br>
+          Algorithm (Splitting method):<br>
+          a) Connect the two farthest boundary points → initial line segment.<br>
+          b) Find the boundary point with maximum perpendicular distance from this line.<br>
+          c) If distance > threshold ε, make this point a new vertex and split.<br>
+          d) Repeat until no more splits are needed.<br><br>
+          <em>Example:</em> A curved boundary of 20 pixels can be approximated by just 5 vertices if the curvature is gentle.<br><br>
+          [Draw a curved boundary with approximating polygon overlaid]<br><br>
+          Advantage: Much more compact than storing all boundary pixels. Useful for shape matching and recognition.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- BOUNDARY DESCRIPTORS -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="section" id="descriptors">
+  <div class="section-header">
+    <span class="section-num">09</span>
+    <h2 class="section-title">Boundary Descriptors</h2>
+    <span class="importance-pill badge badge-green">60% · Short Answers</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What are Boundary Descriptors?</h3>
+    <p>After representing a boundary, we compute <strong>descriptors</strong> — numerical features that characterize the shape. These are used for object recognition, classification, and matching.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>Simple Descriptors</h3>
+
+    <h4>1. Boundary Length</h4>
+    <p>Number of pixels in the boundary (for digital boundaries). For chain codes: count the codes. Diagonal steps contribute √2 times more than horizontal/vertical steps.</p>
+    <div class="formula-box">
+      <div class="formula">Length = n_h + n_v + √2 · n_d</div>
+      <div class="note">n_h/n_v = horizontal/vertical steps (4-connected codes), n_d = diagonal steps</div>
+    </div>
+
+    <h4>2. Diameter</h4>
+    <p>The maximum distance between any two boundary points.</p>
+    <div class="formula-box">
+      <div class="formula">Diam(B) = max[D(pᵢ, pⱼ)]  for all pᵢ, pⱼ ∈ B</div>
+      <div class="note">The two points achieving maximum = major axis of the boundary</div>
+    </div>
+
+    <h4>3. Eccentricity (Elongation)</h4>
+    <div class="formula-box">
+      <div class="formula">Eccentricity = Major axis / Minor axis</div>
+      <div class="note">Circle: eccentricity = 1. Elongated shape: eccentricity >> 1.</div>
+    </div>
+
+    <h4>4. Curvature</h4>
+    <p>Rate of change of slope along the boundary. High curvature = sharp corners. Low curvature = smooth curves.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>Fourier Descriptors ⭐</h3>
+    <p>Represent boundary shape using Fourier transform coefficients. Powerful because it captures shape at different scales.</p>
+
+    <div class="formula-box">
+      <span class="label">Fourier Descriptor Computation</span>
+      <div class="formula">Represent boundary as complex sequence: s(k) = x(k) + j·y(k),  k=0,1,...,K-1</div>
+      <div class="formula" style="margin-top:8px">DFT: a(u) = (1/K) · Σ s(k) · e^(-j2πuk/K)</div>
+      <div class="formula" style="margin-top:8px">First few a(u) = low-frequency components = coarse shape</div>
+      <div class="formula">Higher a(u) = high-frequency components = fine detail</div>
+      <div class="note">Using only first D coefficients reconstructs a smoothed version of the boundary. Scale/rotation invariant variants exist.</div>
+    </div>
+
+    <div class="tip-box connect">
+      <div class="tip-icon">🔗</div>
+      <div class="tip-content">
+        <div class="tip-title">Connection: Fourier Descriptors ↔ Unit 3 (Fourier Transform)</div>
+        <p>Fourier descriptors directly apply the DFT concepts from <strong>Unit 3</strong>. The boundary is treated as a 1D signal (parameterized by arc length or pixel index), and DFT gives frequency components that describe the shape. Low frequencies → overall shape. High frequencies → sharp corners and fine details. This is exactly the frequency domain analysis you learned in Unit 3!</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- MASTER PYQ LIST -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="section" id="pyq-master">
+  <div class="section-header">
+    <span class="section-num">✦</span>
+    <h2 class="section-title">All RTU PYQs — Master List</h2>
+    <span class="importance-pill badge badge-red">Complete Reference</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Part A Questions (2 marks) — Unit 6</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>What are the types of edge detection operators available?</td><td>Edge Detection</td></tr>
+      <tr><td>2025</td><td>What is the role of Hough Transform in global processing?</td><td>Hough Transform</td></tr>
+      <tr><td>2024</td><td><em>(No direct Unit 6 Part A, but Q6–Q8 touch segmentation)</em></td><td>—</td></tr>
+      <tr><td>2023</td><td>What is the need of image segmentation? Explain edge, point, and line detection in brief.</td><td>Intro + Detection</td></tr>
+      <tr><td>2022</td><td>Explain gradient operator?</td><td>Edge Detection</td></tr>
+    </table>
+
+    <h3 style="margin-top:20px">Part B Questions (4 marks) — Unit 6</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>Explain any two boundary representation schemes and illustrate.</td><td>Boundary Rep ⭐</td></tr>
+      <tr><td>2025</td><td>Discuss image segmentation based on various thresholding techniques.</td><td>Thresholding</td></tr>
+      <tr><td>2024</td><td>What are derivative operators useful in image segmentation? Explain their role.</td><td>Edge Detection ⭐</td></tr>
+      <tr><td>2024</td><td>Explain any two boundary representation schemes.</td><td>Boundary Rep ⭐</td></tr>
+      <tr><td>2024</td><td>How do you link edge pixels through global processing? Also explain Hough Transforms.</td><td>Linking + Hough</td></tr>
+      <tr><td>2023</td><td>Explain fundamental steps of region growing and region splitting in segmentation.</td><td>Region Seg ⭐</td></tr>
+    </table>
+
+    <h3 style="margin-top:20px">Part C Questions (10 marks) — Unit 6</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>Show output of edge detection algorithm on given 3×3 image.</td><td>Sobel Numerical ⭐</td></tr>
+      <tr><td>2024</td><td>Horizontal/Vertical gradient + Sobel operations on image Fig.2.</td><td>Edge Operators ⭐</td></tr>
+      <tr><td>2024</td><td>(b) What are derivative operators in segmentation?</td><td>Edge Detection</td></tr>
+      <tr><td>2023</td><td>Hough transform concept + collinearity check + limitations.</td><td>Hough ⭐⭐</td></tr>
+      <tr><td>2022</td><td>What is segmentation? Explain point, line, edge detection + morphological fast scan.</td><td>Full Segmentation ⭐</td></tr>
+    </table>
+  </div>
+
+  <div class="tip-box trick">
+    <div class="tip-icon">🏆</div>
+    <div class="tip-content">
+      <div class="tip-title">Top 5 Must-Prepare Topics for Exam (Priority Order)</div>
+      <p>
+        <strong>1.</strong> Sobel/Prewitt/Roberts operators — with ALL kernels drawn + numerical calculation<br>
+        <strong>2.</strong> Hough Transform — concept, algorithm, collinearity numerical, limitations<br>
+        <strong>3.</strong> Region Growing + Split/Merge — algorithms with diagrams<br>
+        <strong>4.</strong> Thresholding types (Global, Otsu, Local, Multiple) — with formulas<br>
+        <strong>5.</strong> Chain Code boundary representation — with 8-direction diagram + example
+      </p>
+    </div>
+  </div>
+
+  <div class="tip-box validate">
+    <div class="tip-icon">📋</div>
+    <div class="tip-content">
+      <div class="tip-title">General Exam Answer Framework (Use for Any 10-mark Question)</div>
+      <p>
+        <strong>Para 1:</strong> Definition/Introduction (2–3 lines)<br>
+        <strong>Para 2:</strong> Mathematical formulation/formula (boxed, neatly written)<br>
+        <strong>Para 3:</strong> Algorithm steps (numbered list)<br>
+        <strong>Diagram:</strong> Labelled block/flow diagram (this alone = 3–4 marks!)<br>
+        <strong>Para 4:</strong> Example with numbers (shows understanding)<br>
+        <strong>Para 5:</strong> Advantages, Limitations, Applications<br>
+        Aim for 1.5 pages minimum for 10-mark answers.
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+  // Highlight active nav item on scroll
+  const sections = document.querySelectorAll('.section');
+  const navItems = document.querySelectorAll('.nav-item');
+
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 100) current = s.id;
+    });
+    navItems.forEach(n => {
+      n.classList.remove('active');
+      if (n.getAttribute('href') === '#' + current) n.classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>
