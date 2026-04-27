@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIP RTU — Complete Study Guide | B.Tech VI Sem</title>
+<meta name="description" content="Complete RTU exam prep guide for Digital Image Processing (6CS3-01). All units, PYQs 2022–2025, formulas, diagrams and tricks.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,400&display=swap');
+
+:root {
+  --bg:       #0a0c10;
+  --bg2:      #0f1117;
+  --surface:  #141720;
+  --surface2: #1c2130;
+  --border:   #252d40;
+  --border2:  #1c2438;
+  /* Unit accent colors */
+  --u1: #a78bfa; /* violet - home */
+  --u2: #fb923c; /* orange */
+  --u3: #22d3ee; /* cyan */
+  --u4: #c084fc; /* purple */
+  --u5: #4ade80; /* green */
+  --u6: #f43f5e; /* rose */
+  --gold: #f59e0b;
+  --text: #e2e8f4;
+  --dim:  #64748b;
+  --dim2: #94a3b8;
+  --mono: 'IBM Plex Mono', monospace;
+  --head: 'Syne', sans-serif;
+  --body: 'Source Serif 4', serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ════════════════ TOP NAV ════════════════ */
+.topnav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,12,16,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border2);
+  padding: 0 24px;
+  display: flex; align-items: center; gap: 6px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.topnav::-webkit-scrollbar { display: none; }
+.topnav-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 2.5px;
+  text-transform: uppercase; color: var(--dim); padding: 13px 12px 13px 0;
+  border-right: 1px solid var(--border); margin-right: 6px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.nav-chip {
+  font-family: var(--mono); font-size: 11px; padding: 7px 13px;
+  border-radius: 6px; text-decoration: none; color: var(--dim2);
+  white-space: nowrap; flex-shrink: 0; transition: all 0.18s;
+  border: 1px solid transparent;
+}
+.nav-chip:hover { color: var(--text); background: var(--surface2); }
+.nav-chip.active { color: var(--u1); background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.3); }
+
+/* ════════════════ HERO ════════════════ */
+.hero {
+  position: relative; overflow: hidden;
+  padding: 80px 40px 72px;
+  background: var(--bg);
+}
+/* animated grid background */
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(167,139,250,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(167,139,250,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: gridScroll 30s linear infinite;
+}
+@keyframes gridScroll {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(48px); }
+}
+.hero::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(167,139,250,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-inner {
+  position: relative; z-index: 1;
+  max-width: 860px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 20px;
+}
+
+.hero-eyebrow {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--u1);
+  animation: fadeUp 0.6s ease both;
+}
+.hero-eyebrow-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--u1);
+  box-shadow: 0 0 10px var(--u1);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.hero-title {
+  font-family: var(--head); font-weight: 800;
+  font-size: clamp(38px, 7vw, 76px);
+  line-height: 1.0;
+  color: #fff;
+  letter-spacing: -1px;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+.hero-title .accent { color: var(--u1); }
+.hero-title .subject {
+  display: block;
+  background: linear-gradient(135deg, #fff 30%, var(--u1) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-sub {
+  font-family: var(--body); font-size: 17px; color: var(--dim2);
+  max-width: 580px; line-height: 1.7;
+  animation: fadeUp 0.6s 0.2s ease both;
+}
+.hero-sub strong { color: var(--text); font-weight: 600; }
+
+.hero-meta {
+  display: flex; gap: 24px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 12px; color: var(--dim);
+  animation: fadeUp 0.6s 0.3s ease both;
+}
+.hero-meta span { display: flex; align-items: center; gap: 6px; }
+.hero-meta span::before {
+  content: '';
+  width: 16px; height: 1px;
+  background: currentColor; opacity: 0.5;
+}
+
+.hero-badges {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  animation: fadeUp 0.6s 0.4s ease both;
+}
+.hbadge {
+  font-family: var(--mono); font-size: 11px;
+  padding: 5px 12px; border-radius: 20px;
+  border: 1px solid; letter-spacing: 0.5px;
+}
+.hb-v { color: var(--u1); border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.08); }
+.hb-g { color: var(--u5); border-color: rgba(74,222,128,0.3); background: rgba(74,222,128,0.08); }
+.hb-o { color: var(--u2); border-color: rgba(251,146,60,0.3); background: rgba(251,146,60,0.08); }
+.hb-r { color: var(--u6); border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.08); }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ════════════════ UNIT CARDS ════════════════ */
+.units-section {
+  padding: 64px 40px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border2);
+  border-bottom: 1px solid var(--border2);
+}
+.units-header {
+  text-align: center; max-width: 560px; margin: 0 auto 48px;
+}
+.units-header h2 {
+  font-family: var(--head); font-weight: 800;
+  font-size: clamp(22px, 3.5vw, 30px); color: #fff;
+  margin-bottom: 10px;
+}
+.units-header p {
+  font-family: var(--mono); font-size: 12px; color: var(--dim); letter-spacing: 1px;
+}
+.units-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+  max-width: 1100px; margin: 0 auto;
+}
+
+.unit-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  text-decoration: none;
+  display: flex; flex-direction: column; gap: 12px;
+  overflow: hidden;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.unit-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 12px;
+  background: radial-gradient(ellipse 60% 40% at 50% 0%, var(--card-accent) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.unit-card:hover { transform: translateY(-3px); border-color: var(--card-accent); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+.unit-card:hover::before { opacity: 0.08; }
+.unit-card .unit-num {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--card-accent);
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  padding: 3px 10px; border-radius: 4px;
+  display: inline-block; width: fit-content;
+}
+.unit-card h3 {
+  font-family: var(--head); font-size: 17px; font-weight: 700;
+  color: #fff; line-height: 1.3;
+}
+.unit-card .unit-topics {
+  font-family: var(--mono); font-size: 11px; color: var(--dim);
+  line-height: 1.6;
+}
+.unit-card .unit-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: auto; padding-top: 12px;
+  border-top: 1px solid var(--border2);
+}
+.unit-card .unit-go {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--card-accent);
+  display: flex; align-items: center; gap: 5px;
+  transition: gap 0.2s;
+}
+.unit-card:hover .unit-go { gap: 8px; }
+.unit-card .unit-badge {
+  font-family: var(--mono); font-size: 10px; padding: 3px 8px;
+  border-radius: 3px; background: rgba(255,255,255,0.04); color: var(--dim2);
+}
+.current-badge {
+  font-family: var(--mono); font-size: 10px; padding: 2px 8px;
+  border-radius: 3px; color: var(--u1); background: rgba(167,139,250,0.12);
+  border: 1px solid rgba(167,139,250,0.25);
+}
+
+/* ════════════════ UNIT 1 CONTENT ════════════════ */
+.content-section {
+  max-width: 1100px; margin: 0 auto;
+  padding: 64px 40px;
+}
+.content-header {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 32px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.cs-num {
+  font-family: var(--mono); font-size: 12px;
+  color: var(--u1); background: rgba(167,139,250,0.1);
+  border: 1px solid rgba(167,139,250,0.25);
+  padding: 4px 10px; border-radius: 5px;
+}
+.cs-title {
+  font-family: var(--head); font-size: clamp(20px,3vw,26px);
+  font-weight: 800; color: #fff;
+}
+.cs-pill {
+  margin-left: auto; font-family: var(--mono); font-size: 11px;
+  padding: 4px 12px; border-radius: 20px;
+}
+
+.theory { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+.theory h3 { font-family: var(--head); font-size: 16px; font-weight: 700; color: var(--u1); margin-bottom: 12px; }
+.theory p { margin-bottom: 10px; }
+.theory p:last-child { margin-bottom: 0; }
+.theory ul, .theory ol { padding-left: 20px; margin: 10px 0; }
+.theory li { margin-bottom: 8px; font-size: 15px; }
+
+.formula {
+  background: #070a10; border-left: 3px solid var(--u1);
+  border: 1px solid rgba(167,139,250,0.2);
+  border-left: 3px solid var(--u1);
+  border-radius: 8px; padding: 16px 20px; margin: 16px 0;
+  font-family: var(--mono); font-size: 13px; color: #a8d4ff;
+  overflow-x: auto;
+}
+.formula .lbl { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; display: block; }
+.formula .note { color: var(--dim2); font-size: 12px; margin-top: 8px; }
+
+.tip {
+  border-radius: 8px; padding: 16px 18px; margin: 14px 0;
+  display: flex; gap: 12px;
+}
+.tip.trick { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); }
+.tip.note  { background: rgba(74,222,128,0.07); border: 1px solid rgba(74,222,128,0.25); }
+.tip.link  { background: rgba(74,154,240,0.07); border: 1px solid rgba(74,154,240,0.25); }
+.tip-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+.tip-body { flex: 1; }
+.tip-title { font-family: var(--head); font-size: 13px; font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+.tip.trick .tip-title { color: var(--gold); }
+.tip.note .tip-title  { color: var(--u5); }
+.tip.link .tip-title  { color: var(--u3); }
+.tip-body p { font-size: 14px; color: var(--text); margin: 0; }
+
+.tbl { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; display: block; overflow-x: auto; }
+.tbl th { background: var(--surface2); padding: 10px 14px; text-align: left; font-family: var(--head); font-weight: 700; color: var(--u1); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.tbl td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--surface2); }
+
+.hl { color: var(--u1); font-weight: 600; }
+.hl-g { color: var(--u5); }
+.hl-o { color: var(--u2); }
+.hl-r { color: var(--u6); }
+h4 { font-family: var(--head); font-size: 15px; font-weight: 700; color: var(--text); margin: 16px 0 8px; }
+
+/* ════════════════ STATS STRIP ════════════════ */
+.stats-strip {
+  background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  padding: 32px 40px;
+}
+.stats-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 24px;
+}
+.stat-item { text-align: center; }
+.stat-num {
+  font-family: var(--mono); font-size: 32px; font-weight: 600;
+  color: var(--u1); line-height: 1;
+  display: block; margin-bottom: 6px;
+}
+.stat-label { font-family: var(--mono); font-size: 11px; color: var(--dim); letter-spacing: 1px; text-transform: uppercase; }
+
+/* ════════════════ DEVELOPER / FOOTER ════════════════ */
+.site-footer {
+  background: var(--bg);
+  border-top: 1px solid var(--border2);
+}
+
+.footer-inner {
+  max-width: 1100px; margin: 0 auto;
+  padding: 52px 40px 32px;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 40px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid var(--border2);
+}
+
+/* Column 1 — Project */
+.footer-brand .brand-title {
+  font-family: var(--head); font-size: 20px; font-weight: 800; color: #fff;
+  margin-bottom: 8px;
+}
+.footer-brand .brand-sub {
+  font-family: var(--mono); font-size: 11px; color: var(--dim);
+  line-height: 1.6; margin-bottom: 16px;
+}
+.footer-tag-row {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.ftag {
+  font-family: var(--mono); font-size: 10px; padding: 3px 8px;
+  border-radius: 3px; background: var(--surface); border: 1px solid var(--border);
+  color: var(--dim2); letter-spacing: 0.5px;
+}
+
+/* Column 2 — Quick Links */
+.footer-links h4 {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 2.5px;
+  text-transform: uppercase; color: var(--dim); margin-bottom: 16px;
+}
+.footer-links ul { list-style: none; padding: 0; margin: 0; }
+.footer-links li { margin-bottom: 10px; }
+.footer-links a {
+  font-family: var(--mono); font-size: 12px; color: var(--dim2);
+  text-decoration: none; display: flex; align-items: center; gap: 8px;
+  transition: color 0.18s;
+}
+.footer-links a::before {
+  content: '';
+  width: 14px; height: 1px;
+  background: currentColor; opacity: 0.4;
+  flex-shrink: 0; transition: width 0.18s;
+}
+.footer-links a:hover { color: var(--u1); }
+.footer-links a:hover::before { width: 20px; opacity: 1; }
+
+/* Column 3 — Developer */
+.footer-dev h4 {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 2.5px;
+  text-transform: uppercase; color: var(--dim); margin-bottom: 16px;
+}
+.dev-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px;
+}
+.dev-name {
+  font-family: var(--head); font-size: 16px; font-weight: 700;
+  color: #fff; margin-bottom: 4px;
+}
+.dev-role {
+  font-family: var(--mono); font-size: 11px; color: var(--dim);
+  margin-bottom: 14px;
+}
+.dev-social {
+  display: flex; gap: 8px;
+}
+.social-btn {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 11px;
+  padding: 6px 12px; border-radius: 6px;
+  text-decoration: none; color: var(--dim2);
+  background: var(--surface2); border: 1px solid var(--border);
+  transition: all 0.18s;
+}
+.social-btn:hover { color: var(--text); border-color: var(--u1); background: rgba(167,139,250,0.08); }
+.social-btn svg { width: 13px; height: 13px; fill: currentColor; flex-shrink: 0; }
+
+/* Footer bottom bar */
+.footer-bottom {
+  padding: 20px 0 0;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+}
+.footer-copy {
+  font-family: var(--mono); font-size: 11px; color: var(--dim);
+  letter-spacing: 0.5px;
+}
+.footer-copy a { color: var(--dim2); text-decoration: none; }
+.footer-copy a:hover { color: var(--u1); }
+.footer-legal {
+  font-family: var(--mono); font-size: 11px; color: var(--dim);
+  display: flex; gap: 16px; align-items: center;
+}
+.footer-legal span { display: flex; align-items: center; gap: 6px; }
+.footer-legal span::before {
+  content: '·'; color: var(--border); font-size: 16px; line-height: 1;
+}
+.footer-legal span:first-child::before { display: none; }
+
+/* ════════════════ DIVIDER ════════════════ */
+.divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+/* ════════════════ RESPONSIVE ════════════════ */
+@media (max-width: 768px) {
+  .hero { padding: 56px 24px 52px; }
+  .units-section { padding: 48px 20px; }
+  .content-section { padding: 48px 20px; }
+  .stats-strip { padding: 28px 20px; }
+  .footer-inner { padding: 40px 20px 24px; }
+  .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+  .footer-bottom { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .footer-legal { flex-wrap: wrap; gap: 10px; }
+  .cs-pill { display: none; }
+}
+@media (max-width: 480px) {
+  .hero-title { font-size: clamp(30px, 10vw, 44px); }
+  .units-grid { grid-template-columns: 1fr; }
+  .stats-inner { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ── TOP NAV ── -->
+<nav class="topnav">
+  <span class="topnav-label">DIP · RTU</span>
+  <a class="nav-chip active" href="index.html">🏠 Home</a>
+  <a class="nav-chip" href="unit2.html">🖼️ Unit 2</a>
+  <a class="nav-chip" href="unit3.html">🎨 Unit 3</a>
+  <a class="nav-chip" href="unit4.html">🔧 Unit 4</a>
+  <a class="nav-chip" href="unit5.html">📦 Unit 5</a>
+  <a class="nav-chip" href="unit6.html">🔍 Unit 6</a>
+</nav>
+
+<!-- ════════════════════════════════════════════ HERO ════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">
+      <span class="hero-eyebrow-dot"></span>
+      B.Tech VI Semester · RTU Kota · 6CS3-01 / 6E7101
+    </div>
+
+    <h1 class="hero-title">
+      Digital Image<br>
+      <span class="subject">Processing</span>
+    </h1>
+
+    <p class="hero-sub">
+      The <strong>complete exam-ready guide</strong> — every topic from scratch with formulas, SVG diagrams, exam tricks, answer-validation strategies, and <strong>all RTU PYQs 2022–2025 fully solved.</strong>
+    </p>
+
+    <div class="hero-meta">
+      <span>CS / IT / AID / CAI</span>
+      <span>Units 1 – 6 Covered</span>
+      <span>70 Marks Paper</span>
+      <span>Time 3 Hours</span>
+    </div>
+
+    <div class="hero-badges">
+      <span class="hbadge hb-v">✦ All PYQs Solved</span>
+      <span class="hbadge hb-g">⚡ Exam Tricks</span>
+      <span class="hbadge hb-o">📐 Formulas & Kernels</span>
+      <span class="hbadge hb-r">🧠 Unit Connections</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ STATS ════════════ -->
+<div class="stats-strip">
+  <div class="stats-inner">
+    <div class="stat-item">
+      <span class="stat-num">6</span>
+      <span class="stat-label">Units Covered</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">4</span>
+      <span class="stat-label">Years of PYQs</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">30+</span>
+      <span class="stat-label">PYQ Solutions</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">50+</span>
+      <span class="stat-label">Diagrams & Kernels</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">70</span>
+      <span class="stat-label">Max Marks</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ UNIT CARDS ════════════ -->
+<section class="units-section">
+  <div class="units-header">
+    <h2>All Units at a Glance</h2>
+    <p>CLICK ANY UNIT TO OPEN THE FULL STUDY GUIDE</p>
+  </div>
+
+  <div class="units-grid">
+
+    <!-- Unit 1 / Home -->
+    <a class="unit-card" href="index.html" style="--card-accent: var(--u1)">
+      <span class="unit-num">Unit 01 · You are here</span>
+      <h3>Introduction &amp; Course Overview</h3>
+      <p class="unit-topics">Objectives · Scope · Outcomes · What is DIP · Applications overview</p>
+      <div class="unit-footer">
+        <span class="unit-go">Open guide →</span>
+        <span class="current-badge">★ Active</span>
+      </div>
+    </a>
+
+    <!-- Unit 2 -->
+    <a class="unit-card" href="unit2.html" style="--card-accent: var(--u2)">
+      <span class="unit-num">Unit 02</span>
+      <h3>Introduction to Image Processing</h3>
+      <p class="unit-topics">Digital Image Representation · Sampling & Quantization · Image Acquisition · Color Representation</p>
+      <div class="unit-footer">
+        <span class="unit-go" style="color:var(--u2)">Open guide →</span>
+        <span class="unit-badge">🔥 Foundation</span>
+      </div>
+    </a>
+
+    <!-- Unit 3 -->
+    <a class="unit-card" href="unit3.html" style="--card-accent: var(--u3)">
+      <span class="unit-num">Unit 03</span>
+      <h3>Image Transformation &amp; Filtering</h3>
+      <p class="unit-topics">Intensity Transforms · Histogram Equalization · Spatial Filtering · DFT · Freq. Filters · HSI · Wavelets</p>
+      <div class="unit-footer">
+        <span class="unit-go" style="color:var(--u3)">Open guide →</span>
+        <span class="unit-badge">⭐ High Weight</span>
+      </div>
+    </a>
+
+    <!-- Unit 4 -->
+    <a class="unit-card" href="unit4.html" style="--card-accent: var(--u4)">
+      <span class="unit-num">Unit 04</span>
+      <h3>Image Restoration</h3>
+      <p class="unit-topics">Degradation Model · 6 Noise PDFs · Spatial Filters · Inverse Filter · Wiener Filter · Homomorphic</p>
+      <div class="unit-footer">
+        <span class="unit-go" style="color:var(--u4)">Open guide →</span>
+        <span class="unit-badge">⭐ High Weight</span>
+      </div>
+    </a>
+
+    <!-- Unit 5 -->
+    <a class="unit-card" href="unit5.html" style="--card-accent: var(--u5)">
+      <span class="unit-num">Unit 05</span>
+      <h3>Image Compression</h3>
+      <p class="unit-topics">Redundancy Types · Huffman Coding · Arithmetic Coding (0.23355!) · LZW · JPEG · DCT</p>
+      <div class="unit-footer">
+        <span class="unit-go" style="color:var(--u5)">Open guide →</span>
+        <span class="unit-badge">🔢 Numericals</span>
+      </div>
+    </a>
+
+    <!-- Unit 6 -->
+    <a class="unit-card" href="unit6.html" style="--card-accent: var(--u6)">
+      <span class="unit-num">Unit 06</span>
+      <h3>Image Segmentation &amp; Representation</h3>
+      <p class="unit-topics">Edge Detection · Sobel/Prewitt · Thresholding · Hough Transform · Region Growing · Chain Code</p>
+      <div class="unit-footer">
+        <span class="unit-go" style="color:var(--u6)">Open guide →</span>
+        <span class="unit-badge">🔥 Most PYQs</span>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<!-- ════════════ UNIT 1 CONTENT ════════════ -->
+<div class="content-section">
+
+  <!-- Section: Objectives -->
+  <div class="content-header">
+    <span class="cs-num">01</span>
+    <h2 class="cs-title">Course Objectives</h2>
+    <span class="cs-pill hbadge hb-v">Foundation · Conceptual</span>
+  </div>
+
+  <div class="theory">
+    <h3>What This Course Aims to Teach</h3>
+    <p>Digital Image Processing (6CS3-01 / 6E7101) is a core sixth-semester paper for CS, IT, AID, and CAI branches under RTU Kota. The course builds a complete understanding of how digital images are represented, enhanced, restored, compressed, and analysed using mathematical tools and algorithms.</p>
+    <p><strong>By the end of this course, you will be able to:</strong></p>
+    <ol>
+      <li>Understand how a physical scene becomes a digital image — sampling, quantization, and acquisition.</li>
+      <li>Apply spatial and frequency-domain techniques to enhance image quality (Unit 3).</li>
+      <li>Model degradation mathematically and restore blurred/noisy images (Unit 4).</li>
+      <li>Implement lossless and lossy compression algorithms, understand Huffman, LZW, arithmetic coding, and JPEG (Unit 5).</li>
+      <li>Segment images into meaningful regions using edge detectors, Hough transform, and region methods (Unit 6).</li>
+      <li>Represent and describe image boundaries using chain codes and Fourier descriptors (Unit 6).</li>
+    </ol>
+  </div>
+
+  <div class="theory">
+    <h3>What is Digital Image Processing?</h3>
+    <p>A <span class="hl">digital image</span> is a 2D function f(x, y) where (x, y) are spatial coordinates and f is the intensity (brightness) at that point. When both coordinates and intensity are finite and discrete — it is a digital image stored as a matrix (2D array) of pixels.</p>
+    <p><span class="hl">Digital Image Processing (DIP)</span> is the use of computer algorithms to manipulate digital images. Unlike analogue image processing, digital methods are precise, reproducible, and can be highly automated.</p>
+
+    <div class="formula">
+      <span class="lbl">Digital Image — Mathematical Definition</span>
+      <div>f(x, y)  where  x ∈ {0, 1, …, M−1},  y ∈ {0, 1, …, N−1}</div>
+      <div style="margin-top:6px">f(x,y) ∈ {0, 1, …, L−1}  where  L = 2ᵏ  (k = bits per pixel)</div>
+      <div class="note">M × N = image dimensions. L = number of gray levels. 8-bit image: L = 256.</div>
+    </div>
+
+    <p><strong>Three levels of processing:</strong></p>
+    <ul>
+      <li><span class="hl">Low-level:</span> Input = Image → Output = Image. Enhancement, restoration, compression. (Units 3, 4, 5)</li>
+      <li><span class="hl">Mid-level:</span> Input = Image → Output = Features. Segmentation, boundary detection. (Unit 6)</li>
+      <li><span class="hl">High-level:</span> Input = Features → Output = Meaning. Object recognition, AI classification. (Beyond syllabus)</li>
+    </ul>
+  </div>
+
+  <!-- Divider -->
+  <hr class="divider">
+
+  <!-- Section: Scope -->
+  <div class="content-header">
+    <span class="cs-num">02</span>
+    <h2 class="cs-title">Scope of Digital Image Processing</h2>
+    <span class="cs-pill hbadge hb-o">Applications · Real World</span>
+  </div>
+
+  <div class="theory">
+    <h3>Application Domains (Write 5 for a 2-mark answer)</h3>
+    <table class="tbl">
+      <tr><th>Domain</th><th>Application</th><th>DIP Technique Used</th></tr>
+      <tr><td><span class="hl">Medical Imaging</span></td><td>CT, MRI, X-ray analysis; tumour detection; organ segmentation</td><td>Restoration (Unit 4), Segmentation (Unit 6)</td></tr>
+      <tr><td><span class="hl-o">Remote Sensing</span></td><td>Satellite land-use mapping; disaster assessment; weather</td><td>Enhancement (Unit 3), Segmentation (Unit 6)</td></tr>
+      <tr><td><span class="hl-g">Industrial Inspection</span></td><td>PCB defect detection; surface quality on assembly lines</td><td>Edge Detection (Unit 6), Thresholding</td></tr>
+      <tr><td><span class="hl">Forensics & Security</span></td><td>Fingerprint analysis; face recognition; document verification</td><td>Feature Extraction (Unit 6)</td></tr>
+      <tr><td><span class="hl-o">Astronomy</span></td><td>Enhancing deep-space telescope images; removing atmospheric blur</td><td>Restoration (Unit 4), Deconvolution</td></tr>
+      <tr><td><span class="hl-g">Military / Defence</span></td><td>Target recognition; SAR imagery; missile guidance</td><td>Segmentation, Frequency filtering</td></tr>
+      <tr><td><span class="hl-r">Entertainment / Media</span></td><td>Film VFX; image/video compression (JPEG, MPEG)</td><td>Compression (Unit 5)</td></tr>
+      <tr><td><span class="hl">Document Processing</span></td><td>OCR, barcode reading, form recognition</td><td>Binarisation (Thresholding, Unit 6)</td></tr>
+    </table>
+  </div>
+
+  <div class="tip link">
+    <div class="tip-icon">🔗</div>
+    <div class="tip-body">
+      <div class="tip-title">Connection — Scope Spans All Units</div>
+      <p>Every application above maps directly to a later unit. Medical imaging → restoration (Unit 4) for MRI noise removal and segmentation (Unit 6) for organ boundary detection. Satellite imaging → compression (Unit 5) to transmit data over limited bandwidth. Always mention a relevant application when answering theory questions — it earns full marks.</p>
+    </div>
+  </div>
+
+  <!-- Divider -->
+  <hr class="divider">
+
+  <!-- Section: Outcomes -->
+  <div class="content-header">
+    <span class="cs-num">03</span>
+    <h2 class="cs-title">Course Outcomes (COs)</h2>
+    <span class="cs-pill hbadge hb-g">CO1 – CO5 · RTU Format</span>
+  </div>
+
+  <div class="theory">
+    <h3>Expected Learning Outcomes</h3>
+    <p>RTU defines outcomes at the end of the course. Knowing these helps you frame answers — examiners want you to demonstrate these capabilities:</p>
+    <table class="tbl">
+      <tr><th>CO</th><th>Outcome Statement</th><th>Relevant Unit</th></tr>
+      <tr><td><strong>CO1</strong></td><td>Understand and explain the fundamentals of digital image representation, sampling, quantization, and colour models.</td><td>Unit 2</td></tr>
+      <tr><td><strong>CO2</strong></td><td>Apply spatial and frequency-domain image enhancement techniques including histogram processing, spatial filtering, and DFT-based filtering.</td><td>Unit 3</td></tr>
+      <tr><td><strong>CO3</strong></td><td>Model image degradation mathematically and apply restoration techniques such as Wiener filtering and homomorphic filtering.</td><td>Unit 4</td></tr>
+      <tr><td><strong>CO4</strong></td><td>Implement image compression techniques — Huffman, arithmetic, LZW, and JPEG — and calculate compression ratios and entropy.</td><td>Unit 5</td></tr>
+      <tr><td><strong>CO5</strong></td><td>Segment images using edge detection, thresholding, Hough transform, and region-based methods, and represent boundaries using chain codes.</td><td>Unit 6</td></tr>
+    </table>
+  </div>
+
+  <!-- Divider -->
+  <hr class="divider">
+
+  <!-- Section: How to use this guide -->
+  <div class="content-header">
+    <span class="cs-num">04</span>
+    <h2 class="cs-title">How to Use This Guide</h2>
+    <span class="cs-pill hbadge hb-v">Strategy</span>
+  </div>
+
+  <div class="theory">
+    <h3>Exam Paper Structure (70 marks, 3 hours)</h3>
+    <table class="tbl">
+      <tr><th>Part</th><th>Questions</th><th>Marks Each</th><th>Total</th><th>Strategy</th></tr>
+      <tr><td><strong>Part A</strong></td><td>10 (all compulsory)</td><td>2</td><td>20</td><td>Answer in ≤ 25 words. Definitions, one-line formulas.</td></tr>
+      <tr><td><strong>Part B</strong></td><td>Attempt 5 of 7</td><td>4</td><td>20</td><td>3–5 lines + small diagram or formula. Skip harder ones.</td></tr>
+      <tr><td><strong>Part C</strong></td><td>Attempt 3 of 5</td><td>10</td><td>30</td><td>Full-page answers. Block diagrams mandatory. Numericals if asked.</td></tr>
+    </table>
+
+    <h4>10-Mark Answer Framework (Part C)</h4>
+    <ol>
+      <li><strong>Introduction</strong> — Define the topic clearly (2–3 lines).</li>
+      <li><strong>Mathematical Formulation</strong> — Write the key formula in a box (3–4 marks from this).</li>
+      <li><strong>Algorithm/Steps</strong> — Numbered list of procedure.</li>
+      <li><strong>Diagram</strong> — Labelled block diagram or kernel (3–4 marks standalone!).</li>
+      <li><strong>Example/Numerical</strong> — Demonstrates understanding.</li>
+      <li><strong>Advantages, Limitations, Applications</strong> — Fills remaining space.</li>
+    </ol>
+  </div>
+
+  <div class="tip trick">
+    <div class="tip-icon">⚡</div>
+    <div class="tip-body">
+      <div class="tip-title">Diagram Rule — Guaranteed 3 Marks</div>
+      <p>RTU examiners award marks specifically for diagrams. A <strong>labelled block diagram always earns 3–4 marks</strong> even if your written answer is incomplete. For every Part C question — draw the system block diagram first. For edge detection: draw the mask/kernel. For JPEG: draw the 6-stage pipeline. For homomorphic filtering: draw the ln→DFT→H(u,v)→IDFT→exp pipeline. Never skip the diagram.</p>
+    </div>
+  </div>
+
+  <div class="tip note">
+    <div class="tip-icon">✅</div>
+    <div class="tip-body">
+      <div class="tip-title">Unit Connection Strategy — Extra Marks</div>
+      <p>Each unit connects to others. Mentioning these connections in Part C answers demonstrates deep understanding and earns extra credit. Key connections: Unit 3 DFT convolution theorem → Unit 4 restoration in frequency domain. Unit 3 histogram → Unit 5 Huffman coding probabilities. Unit 4 noise removal → Unit 6 cleaner edge detection. Unit 2 sampling → Unit 5 compression justification. All unit connections are marked with 🔗 throughout this guide.</p>
+    </div>
+  </div>
+
+</div><!-- /content-section -->
+
+<!-- ════════════════════════ FOOTER ════════════════════════ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-grid">
+
+      <!-- Col 1 — Project Info -->
+      <div class="footer-brand">
+        <div class="brand-title">DIP RTU Study Guide</div>
+        <div class="brand-sub">
+          A comprehensive, free exam preparation resource for Digital Image Processing
+          (6CS3-01 / 6E7101) under Rajasthan Technical University, Kota.
+          Covers all units with PYQ solutions, formulas, and diagrams.
+        </div>
+        <div class="footer-tag-row">
+          <span class="ftag">B.Tech VI Sem</span>
+          <span class="ftag">RTU Kota</span>
+          <span class="ftag">CS / IT / AID / CAI</span>
+          <span class="ftag">2022 – 2025 PYQs</span>
+        </div>
+      </div>
+
+      <!-- Col 2 — Quick Links -->
+      <div class="footer-links">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="index.html">🏠 Home &amp; Unit 1</a></li>
+          <li><a href="unit2.html">🖼️ Unit 2 — Image Fundamentals</a></li>
+          <li><a href="unit3.html">🎨 Unit 3 — Enhancement</a></li>
+          <li><a href="unit4.html">🔧 Unit 4 — Restoration</a></li>
+          <li><a href="unit5.html">📦 Unit 5 — Compression</a></li>
+          <li><a href="unit6.html">🔍 Unit 6 — Segmentation</a></li>
+        </ul>
+      </div>
+
+      <!-- Col 3 — Developer -->
+      <div class="footer-dev">
+        <h4>Created by</h4>
+        <div class="dev-card">
+          <div class="dev-name">Mahansh Gaur</div>
+          <div class="dev-role">Developed &amp; Maintained by Mahansh Gaur<br>B.Tech · RTU Kota</div>
+          <div class="dev-social">
+            <a class="social-btn" href="https://github.com/mahanshstarktech" target="_blank" rel="noopener">
+              <!-- GitHub icon -->
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+              </svg>
+              GitHub
+            </a>
+            <a class="social-btn" href="https://instagram.com/mahanshstarktech" target="_blank" rel="noopener">
+              <!-- Instagram icon -->
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+              </svg>
+              Instagram
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /footer-grid -->
+
+    <div class="footer-bottom">
+      <div class="footer-copy">
+        © 2026 Mahansh Gaur · <a href="index.html">DIP RTU Study Guide</a> ·
+        All content for educational purposes.
+      </div>
+      <div class="footer-legal">
+        <span>All Rights Reserved</span>
+        <span>Free to use for exam preparation</span>
+        <span>RTU Kota · B.Tech VI Sem</span>
+      </div>
+    </div>
+
+  </div><!-- /footer-inner -->
+</footer>
+
+</body>
+</html>
