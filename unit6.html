@@ -478,14 +478,144 @@
 
   .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
 
-  /* ── MOBILE ── */
+  /* ── CHAPTER NAV BAR ── */
+  .chapter-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #0a0c10;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 16px;
+    height: 44px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .chapter-nav::-webkit-scrollbar { display: none; }
+  .chapter-nav-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .ch-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+  .ch-link:hover { color: var(--text); background: var(--surface2); border-color: var(--border); }
+  .ch-link.current { color: var(--accent); background: #4af0b415; border-color: #4af0b440; }
+  .ch-link.other-unit { color: var(--text-dim); opacity: 0.6; }
+  .ch-divider { width: 1px; height: 16px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+
+  /* ── SIDEBAR MOBILE ── */
+  .sidebar-toggle {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 200;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 4px 16px #4af0b440;
+    transition: transform 0.2s;
+  }
+  .sidebar-toggle:hover { transform: scale(1.08); }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000000aa;
+    z-index: 149;
+  }
+  .sidebar-overlay.open { display: block; }
+
+  .sidebar-header {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .sidebar-header-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .sidebar-close {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 8px;
+    line-height: 1.4;
+  }
+  .sidebar-close:hover { color: var(--accent3); border-color: var(--accent3); }
+
+  /* ── MOBILE OVERRIDE ── */
   @media (max-width: 768px) {
-    .sidebar { display: none; }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 260px;
+      height: 100vh;
+      z-index: 150;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      transition: left 0.25s ease;
+      padding-top: 0;
+    }
+    .sidebar.open { left: 0; }
+    .sidebar-header { display: flex; }
+    .sidebar-toggle { display: flex; }
     .content { max-width: 100%; padding: 20px 16px; }
+  }
+  @media (min-width: 769px) {
+    .sidebar {
+      top: 44px;
+      height: calc(100vh - 44px);
+    }
   }
 </style>
 </head>
 <body>
+
+<nav class="chapter-nav">
+  <span class="chapter-nav-label">DIP · RTU</span>
+  <a class="ch-link" href="index.html">🏠 Home</a>
+  <a class="ch-link" href="unit2.html">🖼️ Unit 2: Intro</a>
+  <a class="ch-link" href="unit3.html">🎨 Unit 3: Enhancement</a>
+  <a class="ch-link" href="unit4.html">🔧 Unit 4: Restoration</a>
+  <a class="ch-link" href="unit5.html">📦 Unit 5: Compression</a>
+  <a class="ch-link active" href="unit6.html">🔍 Unit 6: Segmentation</a>
+</nav>
 
 <div class="hero">
   <div class="hero-inner">
@@ -501,10 +631,17 @@
   </div>
 </div>
 
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<button class="sidebar-toggle" id="sidebarToggle" onclick="openSidebar()" title="Open topics">☰</button>
+
 <div class="layout">
 
 <!-- SIDEBAR -->
-<nav class="sidebar">
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-header-title">Topics</span>
+    <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+  </div>
   <div class="sidebar-title">Topics</div>
   <a class="nav-item active" href="#overview">📊 Overview & Importance</a>
   <a class="nav-item" href="#intro">🧭 What is Segmentation?</a>
@@ -1937,7 +2074,26 @@ f''(x):      0    0   30  -30    0  -20   20
 </div>
 
 <script>
-  // Highlight active nav item on scroll
+  // ── Sidebar open/close (mobile) ──
+  function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebarOverlay').classList.add('open');
+    document.getElementById('sidebarToggle').style.display = 'none';
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+    document.getElementById('sidebarToggle').style.display = '';
+  }
+
+  // Close sidebar when a nav link is clicked on mobile
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 768) closeSidebar();
+    });
+  });
+
+  // ── Active nav highlight on scroll ──
   const sections = document.querySelectorAll('.section');
   const navItems = document.querySelectorAll('.nav-item');
 
