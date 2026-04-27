@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIP Unit 3 — Image Enhancement & Transformation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;600;700;800&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2130;
+    --border: #2a3045;
+    --accent: #22d3ee;
+    --accent2: #f0c44a;
+    --accent3: #f04a7a;
+    --accent4: #4a9af0;
+    --accent5: #c44af0;
+    --text: #e8eaf2;
+    --text-dim: #8892a8;
+    --mono: 'IBM Plex Mono', monospace;
+    --heading: 'Syne', sans-serif;
+    --body: 'Source Serif 4', serif;
+    --sidebar-width: 260px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 16px; line-height: 1.7; }
+
+  /* ── CHAPTER NAV ── */
+  .chapter-nav {
+    background: #080a10; border-bottom: 1px solid var(--border);
+    padding: 0 20px; display: flex; align-items: center; gap: 4px;
+    position: sticky; top: 0; z-index: 200; overflow-x: auto;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .chapter-nav::-webkit-scrollbar { display: none; }
+  .chapter-nav-label {
+    font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+    letter-spacing: 2px; text-transform: uppercase; padding: 12px 10px 12px 0;
+    white-space: nowrap; border-right: 1px solid var(--border); margin-right: 8px; flex-shrink: 0;
+  }
+  .ch-link {
+    font-family: var(--mono); font-size: 11px; padding: 8px 14px; border-radius: 5px;
+    text-decoration: none; color: var(--text-dim); white-space: nowrap; transition: all 0.2s; flex-shrink: 0;
+  }
+  .ch-link:hover { color: var(--text); background: var(--surface2); }
+  .ch-link.active { background: var(--surface2); color: var(--accent); border: 1px solid var(--accent); }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(135deg, #0d0f14 0%, #051a1f 50%, #0d1210 100%);
+    padding: 48px 32px 36px; border-bottom: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 39px, #22d3ee0e 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, #22d3ee0e 40px);
+  }
+  .hero-inner { position: relative; max-width: 960px; margin: 0 auto; }
+  .hero-tag { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+  .hero h1 { font-family: var(--heading); font-size: clamp(26px, 5vw, 52px); font-weight: 800; line-height: 1.1; color: #fff; }
+  .hero h1 span { color: var(--accent); }
+  .hero-sub { margin-top: 12px; color: var(--text-dim); font-size: 15px; max-width: 580px; }
+  .hero-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+  .badge { font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 4px; border: 1px solid; }
+  .badge-green { color: var(--accent); border-color: var(--accent); background: #22d3ee1a; }
+  .badge-yellow { color: var(--accent2); border-color: var(--accent2); background: #f0c44a1a; }
+  .badge-red { color: var(--accent3); border-color: var(--accent3); background: #f04a7a1a; }
+  .badge-blue { color: var(--accent4); border-color: var(--accent4); background: #4a9af01a; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; max-width: 1280px; margin: 0 auto; }
+
+  .sidebar-toggle {
+    display: none; position: fixed; bottom: 20px; right: 20px; z-index: 1000;
+    width: 50px; height: 50px; border-radius: 50%; background: var(--accent);
+    border: none; cursor: pointer; font-size: 20px; color: #000;
+    align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(34,211,238,0.4); transition: transform 0.2s;
+  }
+  .sidebar-toggle:hover { transform: scale(1.1); }
+  .sidebar-toggle.open { background: var(--accent3); color: #fff; }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 98; backdrop-filter: blur(2px); }
+  .sidebar-overlay.visible { display: block; }
+
+  .sidebar {
+    width: var(--sidebar-width); min-width: var(--sidebar-width); padding: 28px 16px;
+    border-right: 1px solid var(--border); position: sticky; top: 44px;
+    height: calc(100vh - 44px); overflow-y: auto; transition: transform 0.3s ease;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .sidebar-title { font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+  .sidebar-close { display: none; background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer; padding: 2px 8px; font-family: var(--mono); font-size: 11px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px;
+    cursor: pointer; font-family: var(--heading); font-size: 13px; font-weight: 600;
+    color: var(--text-dim); transition: all 0.2s; margin-bottom: 2px; text-decoration: none;
+  }
+  .nav-item:hover, .nav-item.active { background: var(--surface2); color: var(--text); }
+  .nav-item.active { color: var(--accent); border-left: 2px solid var(--accent); }
+  .nav-imp { margin-left: auto; font-family: var(--mono); font-size: 10px; padding: 2px 6px; border-radius: 3px; background: var(--surface2); }
+  .nav-imp.high { color: var(--accent3); }
+  .nav-imp.med { color: var(--accent2); }
+  .nav-imp.low { color: var(--accent); }
+
+  .content { flex: 1; padding: 32px 36px; max-width: calc(100% - var(--sidebar-width)); overflow-x: hidden; }
+
+  .section { margin-bottom: 60px; scroll-margin-top: 60px; }
+  .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .section-num { font-family: var(--mono); font-size: 12px; color: var(--accent); background: #22d3ee15; border: 1px solid #22d3ee40; padding: 4px 8px; border-radius: 4px; min-width: 36px; text-align: center; }
+  .section-title { font-family: var(--heading); font-size: clamp(18px,3vw,22px); font-weight: 800; color: #fff; }
+  .importance-pill { margin-left: auto; font-family: var(--mono); font-size: 11px; padding: 4px 12px; border-radius: 20px; }
+
+  .theory-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px; margin-bottom: 20px; }
+  .theory-block h3 { font-family: var(--heading); font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
+  .theory-block p { margin-bottom: 10px; color: var(--text); }
+  .theory-block p:last-child { margin-bottom: 0; }
+
+  .formula-box {
+    background: #0a0e18; border: 1px solid var(--accent4); border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 16px 20px; margin: 16px 0;
+    font-family: var(--mono); font-size: 14px; color: var(--accent4); overflow-x: auto;
+  }
+  .formula-box .label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; display: block; }
+  .formula-box .formula { color: #a8d4ff; }
+  .formula-box .note { color: var(--text-dim); font-size: 12px; margin-top: 8px; }
+
+  .tip-box { border-radius: 8px; padding: 16px 18px; margin: 14px 0; display: flex; gap: 12px; }
+  .tip-box.trick { background: #f0c44a12; border: 1px solid #f0c44a40; }
+  .tip-box.validate { background: #22d3ee12; border: 1px solid #22d3ee40; }
+  .tip-box.connect { background: #4a9af012; border: 1px solid #4a9af040; }
+  .tip-box.warning { background: #f04a7a12; border: 1px solid #f04a7a40; }
+  .tip-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+  .tip-content { flex: 1; }
+  .tip-title { font-family: var(--heading); font-size: 13px; font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .tip-box.trick .tip-title { color: var(--accent2); }
+  .tip-box.validate .tip-title { color: var(--accent); }
+  .tip-box.connect .tip-title { color: var(--accent4); }
+  .tip-box.warning .tip-title { color: var(--accent3); }
+  .tip-content p { font-size: 14px; color: var(--text); margin: 0; }
+
+  .example-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; margin: 14px 0; }
+  .example-label { font-family: var(--mono); font-size: 10px; color: var(--accent3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+
+  .pyq-section { background: #07090f; border: 1px solid #22d3ee30; border-radius: 10px; padding: 20px 24px; margin-top: 24px; }
+  .pyq-header { font-family: var(--heading); font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .pyq-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+  .pyq-q { font-family: var(--heading); font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .pyq-meta { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 12px; }
+  .pyq-toggle { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 6px 14px; cursor: pointer; font-family: var(--mono); font-size: 11px; color: var(--accent); margin-top: 10px; transition: all 0.2s; }
+  .pyq-toggle:hover { background: var(--accent); color: #000; }
+  .answer-content { display: none; margin-top: 14px; }
+  .answer-content.open { display: block; }
+
+  .comp-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; display: block; overflow-x: auto; }
+  .comp-table th { background: var(--surface2); padding: 10px 14px; text-align: left; font-family: var(--heading); font-weight: 700; color: var(--accent); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .comp-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .comp-table tr:last-child td { border-bottom: none; }
+  .comp-table tr:hover td { background: var(--surface2); }
+
+  .kernel-grid { display: inline-flex; gap: 20px; flex-wrap: wrap; margin: 16px 0; }
+  .kernel-wrap { text-align: center; }
+  .kernel-label { font-family: var(--mono); font-size: 11px; color: var(--accent); margin-bottom: 6px; }
+  .kernel { display: inline-grid; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; font-family: var(--mono); font-size: 13px; }
+  .kernel-cell { padding: 8px 12px; text-align: center; border: 1px solid #1e2535; min-width: 40px; }
+  .kernel-cell.pos { color: #22d3ee; }
+  .kernel-cell.neg { color: #f04a7a; }
+  .kernel-cell.zero { color: var(--text-dim); }
+  .kernel-cell.center { background: #1c2130; color: var(--accent2); font-weight: 700; }
+
+  .steps { margin: 14px 0; }
+  .step-item { display: flex; gap: 14px; margin-bottom: 12px; }
+  .step-num { width: 28px; height: 28px; min-width: 28px; border-radius: 50%; background: var(--accent); color: #000; font-family: var(--mono); font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-text { font-size: 15px; padding-top: 4px; }
+
+  .imp-bar-wrap { margin-bottom: 8px; }
+  .imp-bar-label { font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .imp-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .imp-bar-fill { height: 100%; border-radius: 3px; }
+  .imp-high .imp-bar-fill { background: var(--accent3); }
+  .imp-med .imp-bar-fill { background: var(--accent2); }
+  .imp-low .imp-bar-fill { background: var(--accent); }
+
+  .diagram-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin: 16px 0; text-align: center; overflow-x: auto; }
+  .diagram-cap { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 10px; text-align: center; }
+
+  code { font-family: var(--mono); background: var(--surface2); padding: 2px 6px; border-radius: 3px; font-size: 13px; color: var(--accent4); }
+  pre { background: #070a10; border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; font-family: var(--mono); font-size: 13px; color: var(--accent); margin: 12px 0; line-height: 1.6; }
+
+  ul, ol { padding-left: 20px; margin: 10px 0; }
+  li { margin-bottom: 6px; font-size: 15px; }
+  .highlight { color: var(--accent); font-weight: 600; }
+  .hl-yellow { color: var(--accent2); }
+  .hl-red { color: var(--accent3); }
+  .hl-blue { color: var(--accent4); }
+  h4 { font-family: var(--heading); font-size: 15px; font-weight: 700; color: var(--text); margin: 16px 0 8px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* ── FILTER COMPARISON CARDS ── */
+  .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 12px; margin: 16px 0; }
+  .filter-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .filter-card h5 { font-family: var(--heading); font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .filter-card p { font-size: 13px; color: var(--text-dim); margin: 0; }
+  .fc-lp { border-top: 3px solid #22d3ee; }
+  .fc-hp { border-top: 3px solid #f04a7a; }
+  .fc-bp { border-top: 3px solid #f0c44a; }
+
+  @media (max-width: 768px) {
+    .sidebar { position: fixed; top: 0; left: 0; height: 100vh; z-index: 99; background: var(--bg); transform: translateX(-100%); border-right: 1px solid var(--border); }
+    .sidebar.open { transform: translateX(0); box-shadow: 4px 0 30px rgba(0,0,0,0.8); }
+    .sidebar-close { display: block; }
+    .sidebar-toggle { display: flex; }
+    .content { max-width: 100%; padding: 20px 16px; }
+    .hero { padding: 32px 20px 28px; }
+    .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .importance-pill { margin-left: 0; }
+    .theory-block { padding: 16px; }
+    .pyq-section { padding: 14px; }
+    .filter-grid { grid-template-columns: 1fr; }
+  }
+  @media (min-width: 769px) {
+    .sidebar-toggle { display: none !important; }
+    .sidebar-overlay { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="chapter-nav">
+  <span class="chapter-nav-label">DIP · RTU</span>
+  <a class="ch-link active" href="unit3.html">🎨 Unit 3: Enhancement</a>
+  <a class="ch-link" href="unit4.html">🔧 Unit 4: Restoration</a>
+  <a class="ch-link" href="unit5.html">📦 Unit 5: Compression</a>
+  <a class="ch-link" href="unit6.html">🔍 Unit 6: Segmentation</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-tag">📚 B.Tech VI Sem · RTU Exam Prep · Digital Image Processing</div>
+    <h1>Unit 3: Image Transformation<br><span>&amp; Filtering</span></h1>
+    <p class="hero-sub">Complete exam guide — intensity transforms, histogram processing, spatial & frequency domain filtering, color models, wavelet transforms. All RTU PYQ solutions 2022–2025.</p>
+    <div class="hero-badges">
+      <span class="badge badge-red">🔥 High Priority</span>
+      <span class="badge badge-yellow">RTU PYQs Solved</span>
+      <span class="badge badge-green">All Kernels & Formulas</span>
+      <span class="badge badge-blue">Unit Connections</span>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<div class="layout">
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">Topics</span>
+    <button class="sidebar-close" onclick="closeSidebar()">✕ Close</button>
+  </div>
+  <a class="nav-item active" href="#overview" onclick="closeSidebar()">📊 Overview & Importance</a>
+  <a class="nav-item" href="#intensity" onclick="closeSidebar()">🔆 Intensity Transforms<span class="nav-imp high">85%</span></a>
+  <a class="nav-item" href="#histogram" onclick="closeSidebar()">📈 Histogram Processing<span class="nav-imp high">90%</span></a>
+  <a class="nav-item" href="#spatial" onclick="closeSidebar()">🔲 Spatial Filtering<span class="nav-imp high">90%</span></a>
+  <a class="nav-item" href="#fourier" onclick="closeSidebar()">〜 Fourier Transform<span class="nav-imp high">85%</span></a>
+  <a class="nav-item" href="#freq-filters" onclick="closeSidebar()">📡 Frequency Domain Filters<span class="nav-imp high">85%</span></a>
+  <a class="nav-item" href="#color" onclick="closeSidebar()">🌈 Color Models (RGB/HSI)<span class="nav-imp high">80%</span></a>
+  <a class="nav-item" href="#wavelet" onclick="closeSidebar()">〰️ Wavelet Transforms<span class="nav-imp med">70%</span></a>
+  <a class="nav-item" href="#pyq-master" onclick="closeSidebar()">📝 All PYQs Master List</a>
+</nav>
+
+<main class="content">
+
+<!-- ══ OVERVIEW ══ -->
+<section class="section" id="overview">
+  <div class="section-header">
+    <span class="section-num">00</span>
+    <h2 class="section-title">Topic Importance Analysis</h2>
+  </div>
+  <div class="theory-block">
+    <p>Based on RTU PYQs 2022–2025, here is topic importance for Unit 3:</p>
+    <div class="imp-bar-wrap imp-high" style="margin-top:16px">
+      <div class="imp-bar-label"><span>Histogram Equalization (with numerical)</span><span style="color:#f04a7a">90%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:90%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Spatial Filtering (correlation, convolution + kernels)</span><span style="color:#f04a7a">90%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:90%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Intensity Transform Functions (log, power, piecewise)</span><span style="color:#f04a7a">85%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:85%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Fourier Transform & Properties</span><span style="color:#f04a7a">85%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:85%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Frequency Domain Filters (LP, HP)</span><span style="color:#f04a7a">85%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:85%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>HSI Color Model + RGB↔HSI Conversion</span><span style="color:#f0c44a">80%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:80%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Wavelet Transforms</span><span style="color:#f0c44a">70%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:70%"></div></div>
+    </div>
+  </div>
+  <div class="tip-box trick">
+    <div class="tip-icon">⚡</div>
+    <div class="tip-content">
+      <div class="tip-title">Exam Strategy</div>
+      <p>Histogram equalization numerical + spatial filtering convolution calculation = guaranteed 20+ marks. The 2025 Part C Q1 (histogram equalization on 5×5 image) and the correlation/convolution question (Part C Q3, repeated in 2024 and 2025) must be fully mastered. Always draw the filter kernel when answering — examiners award 3–4 marks for the mask alone.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ INTENSITY TRANSFORMS ══ -->
+<section class="section" id="intensity">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">Intensity Transform Functions</h2>
+    <span class="importance-pill badge badge-red">85% · Part A/B</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What is Image Enhancement?</h3>
+    <p><span class="highlight">Image Enhancement</span> improves the visual appearance of an image or makes features more perceptible for human viewers or automated processing. Unlike restoration (Unit 4), enhancement is <strong>subjective</strong> — there is no single "correct" result.</p>
+    <p>Enhancement approaches: (1) Spatial domain — operate directly on pixels f(x,y). (2) Frequency domain — operate on Fourier transform F(u,v).</p>
+    <p><strong>General form of spatial enhancement:</strong> g(x,y) = T[f(x,y)] where T is the transformation and f, g are the input/output images.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐ 1. Image Negatives (Linear)</h3>
+    <p>Reverses the intensity levels. Useful for displaying bright details in dark areas of an image (like X-rays).</p>
+    <div class="formula-box">
+      <span class="label">Image Negative</span>
+      <div class="formula">s = (L - 1) - r</div>
+      <div class="note">r = input pixel intensity, s = output intensity, L = number of gray levels (256 for 8-bit)</div>
+      <div class="note">For 8-bit: s = 255 - r. White→Black, Black→White.</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ 2. Log Transformation</h3>
+    <p>Compresses the dynamic range of pixel values. Useful when input data spans a very wide range (like Fourier spectrum which has one very bright DC component and many small values).</p>
+    <div class="formula-box">
+      <span class="label">Log Transformation</span>
+      <div class="formula">s = c · log(1 + r)</div>
+      <div class="note">c = scaling constant (chosen so output fits in [0, L-1]). r ≥ 0.</div>
+      <div class="note">log(1+r) not log(r) → avoids log(0) when r=0.</div>
+      <div class="note">Effect: Dark regions are brightened (compressed range). Bright areas appear similar.</div>
+    </div>
+    <div class="tip-box trick">
+      <div class="tip-icon">💡</div>
+      <div class="tip-content">
+        <div class="tip-title">When to Use Log Transform — Exam Trick</div>
+        <p>Log transform is ideal for displaying the <strong>Fourier spectrum</strong>. The spectrum has values from 1 to 10⁶+, which cannot be displayed on a normal 8-bit screen. Log compress this to about 0–14. In the exam: "Why use log transform to display Fourier spectrum?" → "To compress the huge dynamic range so low-value components are also visible."</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ 3. Power-Law (Gamma) Transformation — MOST ASKED</h3>
+    <p>Also called <strong>gamma correction</strong>. The parameter γ controls the shape of the mapping curve. Very widely used in display systems, cameras, and printing.</p>
+    <div class="formula-box">
+      <span class="label">Power-Law / Gamma Transformation</span>
+      <div class="formula">s = c · rᵞ</div>
+      <div class="note">c = constant (usually 1). γ = gamma value.</div>
+      <div class="note">γ &lt; 1 → maps dark input to brighter output (brightens image)</div>
+      <div class="note">γ &gt; 1 → maps bright input to darker output (darkens image)</div>
+      <div class="note">γ = 1 → linear (identity, no change)</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 580 180" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="290" y="18" text-anchor="middle" fill="#22d3ee" font-family="IBM Plex Mono" font-size="11">Power-Law Transform — Effect of γ</text>
+        <line x1="40" y1="150" x2="250" y2="150" stroke="#2a3045" stroke-width="1.5"/>
+        <line x1="40" y1="30" x2="40" y2="150" stroke="#2a3045" stroke-width="1.5"/>
+        <text x="255" y="153" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">r (input)</text>
+        <text x="22" y="25" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">s</text>
+        <!-- Identity line -->
+        <line x1="40" y1="150" x2="240" y2="30" stroke="#2a3045" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="242" y="28" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">γ=1</text>
+        <!-- γ < 1 curves (bright) -->
+        <path d="M40,150 Q80,100 140,65 Q180,48 240,30" stroke="#22d3ee" stroke-width="2" fill="none"/>
+        <text x="242" y="45" fill="#22d3ee" font-family="IBM Plex Mono" font-size="8">γ&lt;1</text>
+        <text x="242" y="56" fill="#22d3ee" font-family="IBM Plex Mono" font-size="8">(brighter)</text>
+        <!-- γ > 1 curves (dark) -->
+        <path d="M40,150 Q120,148 180,120 Q220,95 240,30" stroke="#f04a7a" stroke-width="2" fill="none"/>
+        <text x="183" y="115" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">γ&gt;1</text>
+        <text x="175" y="126" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">(darker)</text>
+        <!-- Applications -->
+        <rect x="280" y="35" width="290" height="120" rx="8" fill="#1c2130" stroke="#2a3045" stroke-width="1"/>
+        <text x="425" y="60" text-anchor="middle" fill="#22d3ee" font-family="IBM Plex Mono" font-size="10">Applications:</text>
+        <text x="290" y="80" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">γ&lt;1: Brightening dark scanned images</text>
+        <text x="290" y="96" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">γ&gt;1: Darkening washed-out images</text>
+        <text x="290" y="112" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">CRT monitors: γ≈2.5 (need γ=0.4 correct.)</text>
+        <text x="290" y="128" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">Camera sensors: built-in gamma correction</text>
+        <text x="290" y="144" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">The "gamma correction" in your phone camera = power-law!</text>
+      </svg>
+      <div class="diagram-cap">Fig 1.1 — Power-law transform: γ&lt;1 brightens, γ&gt;1 darkens. γ=1 is identity.</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ 4. Piecewise-Linear Transformations</h3>
+
+    <h4>a) Contrast Stretching</h4>
+    <p>Expands the range of intensity values to span the full [0, L-1] range. Improves contrast of low-contrast images (where all pixels cluster in a narrow intensity range).</p>
+    <div class="formula-box">
+      <span class="label">Contrast Stretching Formula</span>
+      <div class="formula">s = (r - r_min) / (r_max - r_min) × (L-1)</div>
+      <div class="note">r_min, r_max = actual min and max in input image. Output fills [0, 255].</div>
+      <div class="note">More general: map specific range [r1,r2] to [s1,s2] using three line segments.</div>
+    </div>
+
+    <h4>b) Intensity Slicing (Gray-Level Slicing)</h4>
+    <p>Highlights a specific range of intensities. Two variants:</p>
+    <ul>
+      <li><strong>With background:</strong> Highlight [A,B] to bright value; rest stays as original</li>
+      <li><strong>Without background:</strong> Highlight [A,B] to bright value; rest → 0 (black)</li>
+    </ul>
+    <p>Use: Highlighting specific structures in medical images (e.g., blood vessels in a specific density range).</p>
+
+    <h4>c) Bit-Plane Slicing</h4>
+    <p>Decomposes an 8-bit image into 8 binary planes. Bit plane 7 (MSB) contains the most significant structure; bit plane 0 (LSB) contains the least.</p>
+    <div class="formula-box">
+      <span class="label">Bit Plane Extraction</span>
+      <div class="formula">Bit plane k = floor(f(x,y) / 2ᵏ) mod 2</div>
+      <div class="note">k = 0 (LSB) to 7 (MSB). Higher planes carry more image information.</div>
+      <div class="note">Image compression: transmit/store only the top 4–5 bit planes with minimal quality loss.</div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-label">📌 Bit Plane Example</div>
+      <p>Pixel value = 185 = 10111001 in binary</p>
+      <p>Bit plane 7 (MSB): 1 (most significant) | Bit plane 0 (LSB): 1</p>
+      <p>Given the 2025 PYQ image [[7,6,5],[4,3,2],[1,1,0]]:</p>
+      <pre>
+Value  Binary
+  7  = 0111
+  6  = 0110
+  5  = 0101
+  4  = 0100
+  3  = 0011
+  2  = 0010
+  1  = 0001
+  0  = 0000
+
+Bit plane 2 (third bit):
+  7→1, 6→1, 5→1, 4→1, 3→0, 2→0, 1→0, 0→0
+  → [[1,1,1],[1,0,0],[0,0,0]]
+</pre>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Intensity Transforms</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Discuss about contrast stretching and intensity slicing.</div>
+      <div class="pyq-meta">2024 Part A Q1 · May 2025 Part A Q1 · 2 marks ⭐ Repeated!</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Contrast Stretching:</strong><br>
+          Contrast stretching expands the range of intensity values in a low-contrast image to span the full intensity range [0, 255]. It is a piecewise-linear transformation.<br>
+          Formula: s = (r − r_min)/(r_max − r_min) × 255<br>
+          Example: Image with intensities only in [50, 150] is stretched to [0, 255]. Every 50→0, 150→255.<br>
+          The transformation function is an S-shaped (three-segment) piecewise linear function.<br><br>
+          <strong>Intensity Slicing (Gray-Level Slicing):</strong><br>
+          Highlights a specific band of gray levels [A, B] to a bright value (e.g., white = 255), while other intensities are either left unchanged (with-background) or set to black (without-background).<br>
+          Use case: In MRI, highlighting pixels in a specific intensity range corresponding to bone vs soft tissue.<br>
+          Two modes:<br>
+          • Binary: output = 255 if A ≤ r ≤ B, else 0<br>
+          • With background: output = 255 if A ≤ r ≤ B, else r (unchanged)
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What are intensity transform functions? Discuss different intensity transformation functions along with graphical representation of each.</div>
+      <div class="pyq-meta">2024 Part A Q4 · 2023 Part B Q7 · 2–4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Intensity Transform Functions:</strong><br>
+          Intensity transforms operate on single pixels: s = T(r), where r = input intensity, s = output intensity.<br><br>
+
+          <strong>1. Image Negatives:</strong> s = 255 − r. Graph: straight line with negative slope from (0,255) to (255,0). Used for: X-ray analysis, photographic negatives.<br><br>
+
+          <strong>2. Log Transformation:</strong> s = c·log(1+r). Graph: steep rise at low r, flattens at high r (concave down). Compresses dynamic range. Used for: displaying Fourier spectrum.<br><br>
+
+          <strong>3. Power-Law (Gamma):</strong> s = c·rᵞ.<br>
+          • Graph for γ&lt;1: concave (above diagonal) → brightens dark pixels<br>
+          • Graph for γ&gt;1: convex (below diagonal) → darkens bright pixels<br>
+          Used for: gamma correction in displays, cameras, printing.<br><br>
+
+          <strong>4. Piecewise-Linear (Contrast Stretching):</strong> Three-segment line. Maps [r1,r2] to [s1,s2] with (0→0) and (255→255) endpoints. Graph: S-shaped for typical contrast enhancement.<br><br>
+
+          <strong>5. Threshold Function:</strong> s = 0 if r&lt;T, s = 255 if r≥T. Graph: step function. Produces binary image.<br><br>
+
+          [Draw each graph — the examiner gives 1 mark per graph]
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Show the bit plane slicing of the image: [[7,6,5],[4,3,2],[1,1,0]]</div>
+      <div class="pyq-meta">May 2025 Part B Q1 · 4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Bit Plane Slicing of image [[7,6,5],[4,3,2],[1,1,0]]:</strong><br><br>
+          Convert each value to binary (3-bit for values 0–7):<br>
+          7=111, 6=110, 5=101, 4=100, 3=011, 2=010, 1=001, 0=000<br><br>
+
+          Image layout:
+          <pre>  7  6  5       111  110  101
+  4  3  2  →   100  011  010
+  1  1  0       001  001  000</pre>
+
+          <strong>Bit Plane 2 (MSB, 2² bit):</strong><br>
+          7→1, 6→1, 5→1, 4→1, 3→0, 2→0, 1→0, 0→0
+          <pre>  1  1  1
+  1  0  0
+  0  0  0</pre>
+
+          <strong>Bit Plane 1 (middle bit, 2¹ bit):</strong><br>
+          7→1, 6→1, 5→0, 4→0, 3→1, 2→1, 1→0, 0→0
+          <pre>  1  1  0
+  0  1  1
+  0  0  0</pre>
+
+          <strong>Bit Plane 0 (LSB, 2⁰ bit):</strong><br>
+          7→1, 6→0, 5→1, 4→0, 3→1, 2→0, 1→1, 0→0
+          <pre>  1  0  1
+  0  1  0
+  1  1  0</pre>
+
+          <strong>Observation:</strong> Bit plane 2 (MSB) carries the coarse structure. Bit plane 0 (LSB) carries the finest detail (noise-like). In image compression, storing only the top bit planes reduces storage significantly with acceptable quality.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ HISTOGRAM PROCESSING ══ -->
+<section class="section" id="histogram">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2 class="section-title">Histogram Processing</h2>
+    <span class="importance-pill badge badge-red">🔥 90% · Part B/C Numerical</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What is a Histogram?</h3>
+    <p>The <span class="highlight">histogram</span> of a digital image with gray levels [0, L-1] is a discrete function h(rₖ) = nₖ, where rₖ is the kth gray level and nₖ is the number of pixels with that gray level.</p>
+    <div class="formula-box">
+      <span class="label">Normalized Histogram (Probability Estimate)</span>
+      <div class="formula">p(rₖ) = nₖ / n   for k = 0, 1, ..., L-1</div>
+      <div class="note">n = total number of pixels = M×N. p(rₖ) ≈ probability that a pixel has gray level rₖ.</div>
+    </div>
+    <p>A <strong>dark image</strong> has histogram concentrated in low values. A <strong>bright image</strong> has histogram concentrated in high values. A <strong>high-contrast image</strong> has histogram spread evenly.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ Histogram Equalization — Full Algorithm</h3>
+    <p>Histogram equalization redistributes gray levels to produce a <strong>nearly uniform histogram</strong> — spreading intensities evenly across [0, L-1]. This automatically improves contrast.</p>
+
+    <div class="formula-box">
+      <span class="label">Histogram Equalization Transformation</span>
+      <div class="formula">s_k = T(r_k) = (L-1) · Σᵢ₌₀ᵏ p(rᵢ) = (L-1) · CDF(r_k)</div>
+      <div class="note">s_k = output gray level for input r_k. CDF = Cumulative Distribution Function.</div>
+      <div class="note">Practical discrete formula: s_k = round[ ((L-1)/n) · Σᵢ₌₀ᵏ nᵢ ]</div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-label">📌 Full RTU Numerical — Histogram Equalization (2025 Part C Q1)</div>
+      <p><strong>Given 5×5 image segment:</strong></p>
+      <pre>
+  20  20  20  18  16
+  15  15  16  18  15
+  15  15  19  15  17
+  16  17  19  18  16
+  20  18  17  20  15
+</pre>
+      <p><strong>Step 1: Count frequencies (nₖ)</strong></p>
+      <pre>
+  Value  Count  p(rₖ)=nₖ/25
+  15     7      0.28
+  16     5      0.20
+  17     3      0.12
+  18     4      0.16
+  19     2      0.08
+  20     4      0.16
+  Total: 25 pixels ✓
+</pre>
+      <p><strong>Step 2: Cumulative sum (CDF)</strong></p>
+      <pre>
+  r_k  nₖ  Σnᵢ (cumulative)
+  15    7      7
+  16    5     12
+  17    3     15
+  18    4     19
+  19    2     21
+  20    4     25
+</pre>
+      <p><strong>Step 3: Apply s_k = round[(L-1)/n × Σnᵢ] = round[255/25 × CDF] = round[10.2 × CDF]</strong></p>
+      <pre>
+  r_k=15: s = round(10.2 × 7)  = round(71.4) = 71
+  r_k=16: s = round(10.2 × 12) = round(122.4) = 122
+  r_k=17: s = round(10.2 × 15) = round(153)   = 153
+  r_k=18: s = round(10.2 × 19) = round(193.8) = 194
+  r_k=19: s = round(10.2 × 21) = round(214.2) = 214
+  r_k=20: s = round(10.2 × 25) = round(255)   = 255
+</pre>
+      <p><strong>Step 4: Apply mapping to image</strong></p>
+      <pre>
+  20→255  20→255  20→255  18→194  16→122
+  15→71   15→71   16→122  18→194  15→71
+  15→71   15→71   19→214  15→71   17→153
+  16→122  17→153  19→214  18→194  16→122
+  20→255  18→194  17→153  20→255  15→71
+</pre>
+      <p><strong>Inference:</strong> Before equalization, all values clustered in [15,20] (very low contrast). After equalization, values span [71,255] — much better contrast spread!</p>
+    </div>
+
+    <div class="tip-box validate">
+      <div class="tip-icon">✅</div>
+      <div class="tip-content">
+        <div class="tip-title">Self-Check for Histogram Equalization</div>
+        <p>1. Sum of all nₖ = total pixels (M×N) ✓<br>
+        2. Last CDF value = n = M×N ✓ (so last output = L-1 = 255)<br>
+        3. Mapping is monotonically non-decreasing ✓ (higher r_k → higher or equal s_k)<br>
+        4. All output values lie in [0, L-1] ✓<br>
+        5. Count the unique output values — fewer than input → some gray levels are merged (normal!)</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ Histogram Matching (Specification)</h3>
+    <p>Instead of equalizing to a uniform histogram, match the image histogram to a <strong>specified target histogram</strong>. More flexible than equalization — can target any desired distribution.</p>
+
+    <div class="steps">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Equalize the input image</strong> using histogram equalization → get mapping r → s.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Equalize the target histogram</strong> (desired distribution) → get mapping z → v.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>For each s value</strong>, find the z that maps to the closest v = s → that z is the output.</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">Compose: r → s → z gives the complete histogram specification mapping.</div></div>
+    </div>
+
+    <div class="tip-box connect">
+      <div class="tip-icon">🔗</div>
+      <div class="tip-content">
+        <div class="tip-title">Connection: Histogram → Unit 5 (Compression)</div>
+        <p>The histogram of an image is <strong>directly used</strong> in Unit 5 compression! p(rₖ) from the histogram = probability of each gray level = input to Huffman coding. High-frequency gray levels get shorter codes. This is exactly why compression works better on images with non-uniform histograms.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Histogram Processing</div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Describe histogram equalization. Obtain histogram equalization for the following image segment of size 5×5. Write the inference on the image segment before and after equalization.</div>
+      <div class="pyq-meta">May 2025 · Part C Q1 · 10 marks ⭐ Full numerical above in theory section</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Histogram Equalization:</strong><br>
+          Histogram equalization is a technique that redistributes gray levels to achieve a nearly uniform histogram, thereby enhancing the global contrast of an image.<br><br>
+          <strong>Algorithm:</strong><br>
+          1. Compute histogram: h(rₖ) = nₖ for each gray level rₖ<br>
+          2. Normalize: p(rₖ) = nₖ/n (probability estimates)<br>
+          3. Compute CDF: sk = (L-1) × Σᵢ₌₀ᵏ p(rᵢ)<br>
+          4. Map each pixel: replace input rₖ with output sₖ<br><br>
+          <strong>Full numerical solution:</strong> (See detailed solution in theory section above — copy exactly)<br><br>
+          <strong>Inference:</strong><br>
+          • BEFORE: All pixels have values in [15, 20] — very narrow range, very low contrast<br>
+          • AFTER: Pixel values span [71, 255] — much wider range, enhanced contrast<br>
+          • The equalized image will appear more vivid with clearer distinction between features<br>
+          • Histogram equalization is automatic — no manual threshold selection needed<br>
+          • Limitation: Can over-enhance (too much noise visible in uniform regions)
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Perform histogram matching for the given input image to achieve the distribution of given target image. Draw the resultant histogram.</div>
+      <div class="pyq-meta">June 2023 Part B Q2 · 4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Histogram Matching (Specification):</strong><br>
+          Given input image probabilities and target distribution, the procedure is:<br><br>
+          <strong>Step 1: Equalize the input image</strong><br>
+          Compute CDF of input image. Map r → s using s_k = (L-1) × CDF(r_k).<br><br>
+          <strong>Step 2: Equalize the target histogram</strong><br>
+          Compute CDF of target distribution. Map z → v using v_k = (L-1) × CDF_target(z_k).<br><br>
+          <strong>Step 3: For each output s value from Step 1, find z such that v_k ≈ s</strong><br>
+          This gives the final mapping: input intensity r → output intensity z.<br><br>
+          <strong>Step 4: Apply mapping to all pixels.</strong><br><br>
+          <strong>From the 2023 paper tables:</strong><br>
+          Input: rₖ = {10, 25, 60, 115, 140, 165, 210, 250} with p = {0.19, 0.25, 0.21, 0.16, 0.08, 0.06, 0.03, 0.02}<br>
+          Target: zₖ = {10, 25, 60, 115, 140, 165, 210, 250} with p = {0.00, 0.00, 0.00, 0.15, 0.20, 0.30, 0.20, 0.15}<br><br>
+          <em>Equalize input:</em> CDF at each point × 255. Round to nearest:<br>
+          10: CDF=0.19 → s=48; 25: 0.44→112; 60: 0.65→166; 115: 0.81→207; 140: 0.89→227; 165: 0.95→242; 210: 0.98→250; 250: 1.00→255<br><br>
+          <em>Equalize target:</em><br>
+          60: CDF=0→0; 115: 0.15→38; 140: 0.35→89; 165: 0.65→166; 210: 0.85→217; 250: 1.0→255<br><br>
+          <em>Map s→z:</em> For each s from input equalization, find closest v from target equalization. The result shifts intensities toward the target distribution shape.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SPATIAL FILTERING ══ -->
+<section class="section" id="spatial">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2 class="section-title">Spatial Filtering</h2>
+    <span class="importance-pill badge badge-red">🔥 90% · Numerical Heavy</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What is Spatial Filtering?</h3>
+    <p>Spatial filtering modifies pixel values based on the values of surrounding pixels using a <span class="highlight">filter/mask/kernel</span>. The filter is slid over the image and at each position, a new pixel value is computed from the neighborhood.</p>
+    <p><strong>Two types:</strong> (1) Smoothing (low-pass) — reduces noise, blurs image. (2) Sharpening (high-pass) — enhances edges, increases contrast.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ Correlation vs. Convolution — MUST KNOW DIFFERENCE</h3>
+
+    <div class="formula-box">
+      <span class="label">Correlation — Slides Filter WITHOUT Flipping</span>
+      <div class="formula">(f ⊛ w)(x,y) = Σₛ Σₜ w(s,t) · f(x+s, y+t)</div>
+      <div class="note">Filter is placed at (x,y) and slides. No flipping of kernel.</div>
+      <div class="note">Used in: template matching, cross-correlation.</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">Convolution — Slides Filter WITH 180° Rotation</span>
+      <div class="formula">(f ★ w)(x,y) = Σₛ Σₜ w(s,t) · f(x-s, y-t)</div>
+      <div class="note">Filter is rotated 180° before sliding. This is "true" linear filtering.</div>
+      <div class="note">For symmetric kernels (Gaussian, Box): convolution = correlation!</div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">🧠</div>
+      <div class="tip-content">
+        <div class="tip-title">Correlation vs Convolution — Exam Trick</div>
+        <p><strong>Correlation:</strong> Flip NOTHING. Just slide the kernel and multiply.<br>
+        <strong>Convolution:</strong> Rotate kernel 180° (flip both horizontally and vertically), THEN slide.<br>
+        For any symmetric kernel (same when rotated): correlation = convolution.<br>
+        The 2023 and 2024 PYQ (Part C Q3) uses both — filter F is Gaussian (symmetric = same), filter L is Laplacian (asymmetric → flip for convolution).</p>
+      </div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-label">📌 RTU Numerical — Correlate image I with filter F (2024 & 2025 Part C Q3)</div>
+      <p><strong>Image I (3×3):</strong></p>
+      <pre>  1  1  1
+  1  8  1
+  1  1  1</pre>
+      <p><strong>Filter F (3×3 Gaussian approximation):</strong></p>
+      <pre>     1/8
+  1/8  1/2  1/8
+     1/8</pre>
+      <p>(Written as: F = [0, 1/8, 0; 1/8, 1/2, 1/8; 0, 1/8, 0])</p>
+      <p><strong>Correlation at center pixel (1,1) — no padding needed for 3×3 on 3×3:</strong></p>
+      <p>R = (0)(1) + (1/8)(1) + (0)(1) + (1/8)(1) + (1/2)(8) + (1/8)(1) + (0)(1) + (1/8)(1) + (0)(1)</p>
+      <p>R = 0 + 0.125 + 0 + 0.125 + 4 + 0.125 + 0 + 0.125 + 0 = <strong>4.5</strong></p>
+      <p>Since F is symmetric (it's a Gaussian), correlation = convolution. Output at center = 4.5.</p>
+      <p>For the border pixels, zero-padding is typically assumed.</p>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Smoothing (Low-Pass) Spatial Filters</h3>
+
+    <h4>1. Box/Average Filter</h4>
+    <div class="formula-box">
+      <div class="formula">g(x,y) = (1/mn) · Σ f(s,t) over m×n neighborhood</div>
+      <div class="note">Equal weights → every pixel in neighborhood contributes equally. Blurs edges.</div>
+    </div>
+    <div class="kernel-grid">
+      <div class="kernel-wrap">
+        <div class="kernel-label">3×3 Box Filter (×1/9)</div>
+        <div class="kernel" style="grid-template-columns:repeat(3,1fr)">
+          <div class="kernel-cell pos">1</div><div class="kernel-cell pos">1</div><div class="kernel-cell pos">1</div>
+          <div class="kernel-cell pos">1</div><div class="kernel-cell center">1</div><div class="kernel-cell pos">1</div>
+          <div class="kernel-cell pos">1</div><div class="kernel-cell pos">1</div><div class="kernel-cell pos">1</div>
+        </div>
+      </div>
+    </div>
+
+    <h4>2. Gaussian Filter (Weighted Average)</h4>
+    <p>Weights decrease with distance from center following a Gaussian curve. Better than box filter — edges less blurred, noise better removed. More isotropic.</p>
+    <div class="kernel-grid">
+      <div class="kernel-wrap">
+        <div class="kernel-label">3×3 Gaussian (×1/16)</div>
+        <div class="kernel" style="grid-template-columns:repeat(3,1fr)">
+          <div class="kernel-cell pos">1</div><div class="kernel-cell pos">2</div><div class="kernel-cell pos">1</div>
+          <div class="kernel-cell pos">2</div><div class="kernel-cell center">4</div><div class="kernel-cell pos">2</div>
+          <div class="kernel-cell pos">1</div><div class="kernel-cell pos">2</div><div class="kernel-cell pos">1</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">⚡</div>
+      <div class="tip-content">
+        <div class="tip-title">Box vs Gaussian — RTU Short Answer</div>
+        <p>Box filter: all weights equal = 1/9. Simple, fast. Creates "blocky" blur — ringing artifacts at edges.<br>
+        Gaussian filter: center weighted more (1,2,4,2,1 pattern). Smoother blur. Isotropic. No ringing.<br>
+        Key difference (2023 Part A Q3): <strong>Box filter has flat frequency response causing ringing (Gibbs effect); Gaussian has smooth Gaussian frequency response (no ringing).</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Sharpening (High-Pass) Spatial Filters</h3>
+
+    <h4>1. First Derivative — Gradient (Sobel, Prewitt)</h4>
+    <p>Computes gradient magnitude → highlights edges. Already covered in Unit 6 (segmentation). Sobel Gx, Gy kernels detect vertical and horizontal edges respectively.</p>
+
+    <h4>2. Second Derivative — Laplacian</h4>
+    <p>The Laplacian is an isotropic second-derivative operator. For image sharpening, add it back to the original:</p>
+    <div class="formula-box">
+      <span class="label">Laplacian-Based Sharpening</span>
+      <div class="formula">g(x,y) = f(x,y) - ∇²f(x,y)  [if center of mask is negative]</div>
+      <div class="formula">g(x,y) = f(x,y) + ∇²f(x,y)  [if center of mask is positive]</div>
+      <div class="note">Subtracting negative-center Laplacian = adding sharpening. Rule: match the sign to center coefficient.</div>
+    </div>
+    <div class="kernel-grid">
+      <div class="kernel-wrap">
+        <div class="kernel-label">Laplacian (negative center)</div>
+        <div class="kernel" style="grid-template-columns:repeat(3,1fr)">
+          <div class="kernel-cell pos">0</div><div class="kernel-cell pos">1</div><div class="kernel-cell pos">0</div>
+          <div class="kernel-cell pos">1</div><div class="kernel-cell neg">-4</div><div class="kernel-cell pos">1</div>
+          <div class="kernel-cell pos">0</div><div class="kernel-cell pos">1</div><div class="kernel-cell pos">0</div>
+        </div>
+      </div>
+      <div class="kernel-wrap">
+        <div class="kernel-label">Laplacian (positive center)</div>
+        <div class="kernel" style="grid-template-columns:repeat(3,1fr)">
+          <div class="kernel-cell neg">0</div><div class="kernel-cell neg">-1</div><div class="kernel-cell neg">0</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell center">+4</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell neg">0</div><div class="kernel-cell neg">-1</div><div class="kernel-cell neg">0</div>
+        </div>
+      </div>
+      <div class="kernel-wrap">
+        <div class="kernel-label">Combined Sharpening (add to orig.)</div>
+        <div class="kernel" style="grid-template-columns:repeat(3,1fr)">
+          <div class="kernel-cell neg">0</div><div class="kernel-cell neg">-1</div><div class="kernel-cell neg">0</div>
+          <div class="kernel-cell neg">-1</div><div class="kernel-cell center">+5</div><div class="kernel-cell neg">-1</div>
+          <div class="kernel-cell neg">0</div><div class="kernel-cell neg">-1</div><div class="kernel-cell neg">0</div>
+        </div>
+      </div>
+    </div>
+
+    <h4>3. Unsharp Masking</h4>
+    <p>A popular technique in photography and printing. Subtracts a blurred version from the original to get the "unsharp mask" (the edges), then adds it back.</p>
+    <div class="formula-box">
+      <span class="label">Unsharp Masking Process</span>
+      <div class="formula">1. Blur: f_blur = f ★ Gaussian</div>
+      <div class="formula" style="margin-top:6px">2. Mask: f_mask = f - f_blur   (this IS the high-frequency content)</div>
+      <div class="formula" style="margin-top:6px">3. Sharpen: g = f + k·f_mask</div>
+      <div class="note">k = amount of sharpening. k=1 → standard unsharp masking. k&gt;1 → highboost filtering.</div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">💡</div>
+      <div class="tip-content">
+        <div class="tip-title">Unsharp Masking vs Laplacian Sharpening — 2 marks Distinction</div>
+        <p><strong>Laplacian sharpening:</strong> Uses second-derivative operator directly. Fast. Single kernel application.<br>
+        <strong>Unsharp masking:</strong> Subtracts blurred version. More control (adjust k). Traditional darkroom technique now done digitally. Equivalent to high-boost filtering.<br>
+        Both achieve edge enhancement, but unsharp masking gives more control over the amount of sharpening via the k parameter.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Spatial Filtering</div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Consider the image 'I' and filters 'F' and 'L'. (a) Correlate I with F and compute output. (b) Apply filter L to image I to produce 3×3 output image.</div>
+      <div class="pyq-meta">2024 Part C Q3 · May 2025 Part C Q3 · 10 marks ⭐ REPEATED!</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Given:</strong><br>
+          Image I (3×3):        Filter F (3×3):           Filter L (3×3):<br>
+          <pre>
+  1  1  1       0  1/8  0         0  1   0
+  1  8  1      1/8 1/2 1/8        1  -4  1
+  1  1  1       0  1/8  0         0  1   0
+</pre>
+          <br>
+          <strong>Part (a): Correlate I with F (no kernel flip needed — F is symmetric)</strong><br><br>
+          For a 3×3 filter on a 3×3 image, only the center pixel can be computed without padding.<br>
+          Result at (1,1) — center:<br>
+          R = 0(1) + 1/8(1) + 0(1) + 1/8(1) + 1/2(8) + 1/8(1) + 0(1) + 1/8(1) + 0(1)<br>
+          R = 0 + 0.125 + 0 + 0.125 + 4 + 0.125 + 0 + 0.125 + 0 = <strong>4.5</strong><br><br>
+          For a full 3×3 output, zero-pad I to 5×5 and apply F at each position. The padded image has zeros around the border.<br>
+          Output at (0,0): = 1/8×1 + 1/2×1 + 1/8×1 (only center overlap) = 0.75<br>
+          Output at (0,1): = 1/8×1 + 1/2×1 + 1/8×8 + 1/8×1 = 0.125+0.5+1+0.125 = 1.75<br>
+          Output at (1,1): = <strong>4.5</strong> (computed above)<br><br>
+          [The examiner expects: zero-pad → apply → show at least center result with full calculation]<br><br>
+
+          <strong>Part (b): Apply filter L to I (Laplacian convolution)</strong><br>
+          L is NOT symmetric → for convolution, rotate 180°. But L = [[0,1,0],[1,-4,1],[0,1,0]] is symmetric! So rotation doesn't change it.<br><br>
+          Apply L at center (1,1) using correlation (same as convolution since symmetric):<br>
+          R = 0(1) + 1(1) + 0(1) + 1(1) + (-4)(8) + 1(1) + 0(1) + 1(1) + 0(1)<br>
+          R = 0 + 1 + 0 + 1 - 32 + 1 + 0 + 1 + 0 = <strong>-28</strong><br><br>
+          This is the Laplacian value at the center — large negative = sharp center (as expected, since 8 is surrounded by 1s).<br><br>
+          For all 9 positions with zero-padding:<br>
+          Corner (0,0): 1(-4) + 1(1) + 1(1) = -4+1+1 = -2<br>
+          Edge (0,1): 1(1) + 1(-4) + 8(1) + 1(1) = 1-4+8+1 = 6<br>
+          Center (1,1): 1+1-32+1+1 = -28 (dominant due to high-valued center)<br><br>
+          Full output (with zero-padding):
+          <pre>
+  -2    6   -2
+   6  -28    6
+  -2    6   -2
+</pre>
+          The Laplacian output shows large negative at center (bright center pixel relative to neighbors → strong Laplacian response).
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What is spatial filtering? Define spatial correlation and convolution with an example. Also explain Differentiate Correlation and Convolution.</div>
+      <div class="pyq-meta">2022 Part B Q2 · 2024 Part C Q4(a) · 4–10 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Spatial Filtering:</strong><br>
+          Spatial filtering modifies pixel values based on their neighborhood using a filter kernel w(s,t). The kernel is moved over the image and at each position a new value is computed. Used for smoothing (noise removal) and sharpening (edge enhancement).<br><br>
+
+          <strong>Spatial Correlation:</strong><br>
+          (f ⊛ w)(x,y) = Σₛ Σₜ w(s,t) · f(x+s, y+t)<br>
+          The kernel w is slid over the image WITHOUT any flipping. The kernel acts as a template — correlation measures how similar the kernel is to the local image region.<br><br>
+
+          <strong>Spatial Convolution:</strong><br>
+          (f ★ w)(x,y) = Σₛ Σₜ w(s,t) · f(x-s, y-t)<br>
+          The kernel w is first <strong>rotated by 180°</strong> (flipped both horizontally and vertically), then slid over the image.<br><br>
+
+          <strong>Key Difference:</strong>
+          <table class="comp-table" style="font-size:12px">
+            <tr><th>Correlation</th><th>Convolution</th></tr>
+            <tr><td>No kernel flip</td><td>Kernel rotated 180°</td></tr>
+            <tr><td>Template matching</td><td>Linear filtering (mathematical)</td></tr>
+            <tr><td>Not commutative in general</td><td>Commutative: f★w = w★f</td></tr>
+            <tr><td>DFT: F* · W (complex conjugate)</td><td>DFT: F · W (direct multiplication)</td></tr>
+            <tr><td>Used for: feature detection</td><td>Used for: image filtering, convolution theorem</td></tr>
+          </table>
+          <br>
+          <strong>When are they equal?</strong> When the kernel is symmetric (same after 180° rotation) — e.g., Gaussian, box filter, Laplacian. NOT equal for asymmetric kernels like Sobel Gx.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOURIER TRANSFORMS ══ -->
+<section class="section" id="fourier">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2 class="section-title">Fourier Transform &amp; Properties</h2>
+    <span class="importance-pill badge badge-red">85% · Part A/B</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>1D Discrete Fourier Transform</h3>
+    <div class="formula-box">
+      <span class="label">1D DFT (Forward)</span>
+      <div class="formula">F(u) = Σₓ₌₀^(N-1) f(x) · e^(-j2πux/N)   for u = 0,1,...,N-1</div>
+      <span class="label" style="margin-top:10px">1D IDFT (Inverse)</span>
+      <div class="formula">f(x) = (1/N) · Σᵤ₌₀^(N-1) F(u) · e^(j2πux/N)   for x = 0,1,...,N-1</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>2D Discrete Fourier Transform (Most Important)</h3>
+    <div class="formula-box">
+      <span class="label">2D DFT</span>
+      <div class="formula">F(u,v) = Σₓ Σᵧ f(x,y) · e^(-j2π(ux/M + vy/N))</div>
+      <span class="label" style="margin-top:10px">2D IDFT</span>
+      <div class="formula">f(x,y) = (1/MN) · Σᵤ Σᵥ F(u,v) · e^(j2π(ux/M + vy/N))</div>
+      <div class="note">M×N = image size. F(u,v) = complex frequency spectrum. F(0,0) = DC component = MN × mean intensity.</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐ Key Properties of 2D DFT</h3>
+
+    <table class="comp-table">
+      <tr><th>Property</th><th>Mathematical Statement</th><th>Practical Meaning</th></tr>
+      <tr>
+        <td><strong>Linearity</strong></td>
+        <td>DFT{af+bg} = a·DFT{f} + b·DFT{g}</td>
+        <td>DFT of weighted sum = weighted sum of DFTs</td>
+      </tr>
+      <tr>
+        <td><strong>Translation (Shift)</strong></td>
+        <td>f(x-x₀,y-y₀) ↔ F(u,v)·e^(-j2π(ux₀/M+vy₀/N))</td>
+        <td>Shifting image = multiplying spectrum by phase. Only phase changes, magnitude stays same.</td>
+      </tr>
+      <tr>
+        <td><strong>Convolution Theorem</strong></td>
+        <td>f★h ↔ F(u,v)·H(u,v)</td>
+        <td>Convolution in spatial = multiplication in frequency. This is WHY frequency domain filtering is fast!</td>
+      </tr>
+      <tr>
+        <td><strong>Correlation Theorem</strong></td>
+        <td>f⊛h ↔ F*(u,v)·H(u,v)</td>
+        <td>Correlation = multiply by complex conjugate in frequency domain</td>
+      </tr>
+      <tr>
+        <td><strong>Periodicity</strong></td>
+        <td>F(u,v) = F(u+M,v) = F(u,v+N)</td>
+        <td>DFT spectrum is periodic → causes wraparound error if not handled</td>
+      </tr>
+      <tr>
+        <td><strong>Symmetry</strong></td>
+        <td>F(u,v) = F*(-u,-v)</td>
+        <td>For real images, spectrum is conjugate symmetric. |F(u,v)| = |F(-u,-v)|</td>
+      </tr>
+      <tr>
+        <td><strong>Rotation</strong></td>
+        <td>Rotating f by θ → rotating F by θ</td>
+        <td>Rotation in spatial = rotation in frequency domain</td>
+      </tr>
+    </table>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">🧠</div>
+      <div class="tip-content">
+        <div class="tip-title">Most Exam-Critical Properties — Convolution + Shift</div>
+        <p><strong>Convolution theorem</strong> (f★h ↔ F·H): This is THE most important. It says: instead of slow spatial convolution (O(N²M²)), take two FFTs, multiply pointwise, then IFFT → much faster (O(NM·log(NM))).<br>
+        <strong>Shift property:</strong> Moving an image doesn't change the magnitude spectrum — only the phase. So |F| (power spectrum) is shift-invariant. The 2023 Part A Q2 asks exactly this!</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Centering the Spectrum</h3>
+    <p>By default, DFT(0,0) — the DC component — appears at the corner of the spectrum. To center it (DC at the center), multiply the image by (-1)^(x+y) before taking DFT. This is called "centering" or "fftshift" in MATLAB/Python.</p>
+    <div class="formula-box">
+      <div class="formula">f(x,y)·(-1)^(x+y) ↔ F(u-M/2, v-N/2)</div>
+      <div class="note">This shifts the DC component from corner (0,0) to center (M/2, N/2). Used for displaying the spectrum.</div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Fourier Transform</div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain shifting and convolution properties of 2-D discrete Fourier transform.</div>
+      <div class="pyq-meta">June 2023 Part A Q2 · 2 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Shifting Property of 2D DFT:</strong><br>
+          If f(x,y) ↔ F(u,v), then shifting the image by (x₀,y₀) in spatial domain:<br>
+          f(x−x₀, y−y₀) ↔ F(u,v) · e^(−j2π(ux₀/M + vy₀/N))<br><br>
+          Key implication: Translation only affects the phase of the Fourier transform, NOT its magnitude. So the power spectrum |F(u,v)|² is translation-invariant — moving an image doesn't change its frequency content appearance.<br><br>
+          To center the DFT (move DC to center): multiply by (−1)^(x+y) before taking DFT:<br>
+          f(x,y)·(−1)^(x+y) ↔ F(u−M/2, v−N/2)<br><br>
+
+          <strong>Convolution Property of 2D DFT:</strong><br>
+          If f(x,y) ↔ F(u,v) and h(x,y) ↔ H(u,v), then:<br>
+          f(x,y) ★ h(x,y) ↔ F(u,v) · H(u,v)<br><br>
+          Conversely: f(x,y) · h(x,y) ↔ (1/MN) · F(u,v) ★ H(u,v)<br><br>
+          Practical significance: Spatial domain convolution is computationally expensive O(N⁴) for an N×N image with N×N kernel. Using the convolution theorem, we can perform the same operation as: FFT(f) → multiply pointwise with FFT(h) → IFFT → result. This is O(N² log N), much faster. This is how all real-time image filtering works in practice.
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Prove whether the Fourier Transform of a discrete time signal is continuous or discrete. Explain with an example.</div>
+      <div class="pyq-meta">May 2025 Part B Q2 · 4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Fourier Transform of a Discrete Signal:</strong><br><br>
+          The Fourier Transform (FT) of a continuous signal f(t) is continuous in frequency.<br>
+          The Fourier Transform of a <strong>discrete sequence</strong> f[n] (DTFT) is: F(e^jω) = Σ f[n]·e^(-jωn) — this is <strong>continuous and periodic</strong> in ω (period 2π).<br>
+          The DFT samples this DTFT at N equally spaced frequencies, giving a <strong>discrete</strong> frequency domain.<br><br>
+
+          <strong>Example:</strong> Let f[n] = {1, 2, 3, 4} (N=4 point sequence)<br>
+          DFT: F[0] = Σ f[n] = 1+2+3+4 = 10 (DC)<br>
+          F[1] = 1·e⁰ + 2·e^(-jπ/2) + 3·e^(-jπ) + 4·e^(-j3π/2)<br>
+          = 1 + 2(-j) + 3(-1) + 4(j) = (1-3) + j(-2+4) = -2 + 2j<br>
+          |F[1]| = √(4+4) = 2√2<br><br>
+
+          <strong>Conclusion:</strong> The DFT of a discrete N-point sequence gives N discrete complex frequency samples. The DTFT (theoretical) of a discrete signal is continuous and periodic; the DFT is a sampled, discrete version of the DTFT. So: Discrete signal → DFT → <strong>Discrete spectrum</strong>.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FREQUENCY DOMAIN FILTERS ══ -->
+<section class="section" id="freq-filters">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2 class="section-title">Frequency Domain Filters</h2>
+    <span class="importance-pill badge badge-red">85% · Part A/B</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Frequency Domain Filtering Pipeline</h3>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 680 110" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="340" y="18" text-anchor="middle" fill="#22d3ee" font-family="IBM Plex Mono" font-size="11">Frequency Domain Filtering Steps</text>
+        <rect x="10" y="35" width="85" height="45" rx="4" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="52" y="55" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="9">f(x,y)·</text>
+        <text x="52" y="68" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="9">(-1)^(x+y)</text>
+        <polygon points="98,58 112,52 112,64" fill="#22d3ee"/>
+        <rect x="115" y="35" width="80" height="45" rx="4" fill="#1c2130" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="155" y="60" text-anchor="middle" fill="#22d3ee" font-family="IBM Plex Mono" font-size="10">DFT</text>
+        <polygon points="198,58 212,52 212,64" fill="#22d3ee"/>
+        <rect x="215" y="35" width="110" height="45" rx="4" fill="#1c2130" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="270" y="55" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">Multiply by</text>
+        <text x="270" y="68" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">H(u,v) filter</text>
+        <polygon points="328,58 342,52 342,64" fill="#22d3ee"/>
+        <rect x="345" y="35" width="80" height="45" rx="4" fill="#1c2130" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="385" y="60" text-anchor="middle" fill="#22d3ee" font-family="IBM Plex Mono" font-size="10">IDFT</text>
+        <polygon points="428,58 442,52 442,64" fill="#22d3ee"/>
+        <rect x="445" y="35" width="90" height="45" rx="4" fill="#1c2130" stroke="#f0c44a" stroke-width="1.5"/>
+        <text x="490" y="55" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">Real part of</text>
+        <text x="490" y="68" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">(-1)^(x+y)·IDFT</text>
+        <polygon points="538,58 552,52 552,64" fill="#22d3ee"/>
+        <rect x="555" y="35" width="85" height="45" rx="4" fill="#1c2130" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="597" y="60" text-anchor="middle" fill="#4af0b4" font-family="IBM Plex Mono" font-size="10">g(x,y)</text>
+        <text x="52" y="96" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Center spectrum</text>
+        <text x="155" y="96" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Freq domain</text>
+        <text x="270" y="96" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Apply H(u,v)</text>
+        <text x="385" y="96" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Back to spatial</text>
+        <text x="490" y="96" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">De-center</text>
+        <text x="597" y="96" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Result</text>
+      </svg>
+      <div class="diagram-cap">Fig 5.1 — 5-step frequency domain filtering pipeline</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ Low-Pass Filters (Smoothing)</h3>
+    <p>Low-pass filters pass low frequencies (smooth/DC) and attenuate high frequencies (edges/noise) → result is a smoothed/blurred image.</p>
+
+    <div class="filter-grid">
+      <div class="filter-card fc-lp">
+        <h5 style="color:#22d3ee">ILPF — Ideal Low-Pass</h5>
+        <div class="formula-box" style="padding:8px;margin:8px 0">
+          <div class="formula" style="font-size:12px">H(u,v) = 1 if D(u,v) ≤ D₀<br>H(u,v) = 0 if D(u,v) &gt; D₀</div>
+        </div>
+        <p>Sharp cutoff. Causes <strong>ringing (Gibbs effect)</strong> in spatial domain. Not used in practice.</p>
+      </div>
+      <div class="filter-card fc-lp">
+        <h5 style="color:#22d3ee">BLPF — Butterworth Low-Pass</h5>
+        <div class="formula-box" style="padding:8px;margin:8px 0">
+          <div class="formula" style="font-size:12px">H(u,v) = 1 / [1 + (D(u,v)/D₀)^(2n)]</div>
+        </div>
+        <p>n = order. Smooth transition. <strong>No ringing.</strong> n→∞ approaches ILPF.</p>
+      </div>
+      <div class="filter-card fc-lp">
+        <h5 style="color:#22d3ee">GLPF — Gaussian Low-Pass</h5>
+        <div class="formula-box" style="padding:8px;margin:8px 0">
+          <div class="formula" style="font-size:12px">H(u,v) = e^(-D²(u,v)/2D₀²)</div>
+        </div>
+        <p>Gaussian shape. <strong>No ringing.</strong> Spatial counterpart is also Gaussian. Most natural blur.</p>
+      </div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">Distance from Center</span>
+      <div class="formula">D(u,v) = √[(u - M/2)² + (v - N/2)²]</div>
+      <div class="note">D₀ = cutoff frequency (radius in pixels). Larger D₀ → less smoothing. Smaller D₀ → more blur.</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ High-Pass Filters (Sharpening)</h3>
+    <p>High-pass filters attenuate low frequencies and pass high frequencies → enhances edges, sharpens image. Relationship: H_HP(u,v) = 1 - H_LP(u,v)</p>
+
+    <div class="filter-grid">
+      <div class="filter-card fc-hp">
+        <h5 style="color:#f04a7a">IHPF — Ideal High-Pass</h5>
+        <div class="formula-box" style="padding:8px;margin:8px 0">
+          <div class="formula" style="font-size:12px">H(u,v) = 0 if D(u,v) ≤ D₀<br>H(u,v) = 1 if D(u,v) &gt; D₀</div>
+        </div>
+        <p>Sharp cutoff. Severe ringing. Not practical.</p>
+      </div>
+      <div class="filter-card fc-hp">
+        <h5 style="color:#f04a7a">BHPF — Butterworth High-Pass</h5>
+        <div class="formula-box" style="padding:8px;margin:8px 0">
+          <div class="formula" style="font-size:12px">H(u,v) = 1 / [1 + (D₀/D(u,v))^(2n)]</div>
+        </div>
+        <p>Smooth transition. No ringing. Preferred.</p>
+      </div>
+      <div class="filter-card fc-hp">
+        <h5 style="color:#f04a7a">GHPF — Gaussian High-Pass</h5>
+        <div class="formula-box" style="padding:8px;margin:8px 0">
+          <div class="formula" style="font-size:12px">H(u,v) = 1 - e^(-D²(u,v)/2D₀²)</div>
+        </div>
+        <p>No ringing. Smooth. Natural sharpening.</p>
+      </div>
+    </div>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">⚡</div>
+      <div class="tip-content">
+        <div class="tip-title">LP ↔ HP Relationship + Ringing Trick</div>
+        <p><strong>HP = 1 - LP</strong> always! So IHPF = 1 - ILPF, BHPF = 1 - BLPF, GHPF = 1 - GLPF.<br>
+        <strong>Ringing (Gibbs effect):</strong> Only IDEAL filters cause ringing. Butterworth and Gaussian do NOT. Why? Ideal filter has a sharp rectangular spectrum → its spatial domain response is a sinc function with infinite oscillations.<br>
+        Exam answer: "Ideal filters cause ringing due to the sharp cutoff in frequency domain; Butterworth/Gaussian have smooth rolloff and therefore no ringing."</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Frequency Filters</div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What is the difference between a box low pass filter and a Gaussian low pass filter?</div>
+      <div class="pyq-meta">June 2023 Part A Q3 · 2 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Box (Average) Low-Pass Filter vs Gaussian Low-Pass Filter:</strong><br><br>
+          <strong>Box Filter:</strong><br>
+          • Spatial: equal weights 1/9 in 3×3 neighborhood<br>
+          • Frequency: Sinc-like spectrum with side lobes → causes ringing (Gibbs effect) at edges<br>
+          • Not separable in a smooth way<br>
+          • Fast to compute (just addition + division)<br><br>
+
+          <strong>Gaussian Filter:</strong><br>
+          • Spatial: Gaussian-weighted kernel, center has highest weight<br>
+          • Frequency: Also Gaussian (Fourier transform of Gaussian is Gaussian!) → NO ringing<br>
+          • Separable: 2D Gaussian = 1D Gaussian × 1D Gaussian → even faster computation<br>
+          • More natural blur (matches HVS point spread function)<br><br>
+
+          <strong>Key Difference:</strong> The box filter's rectangular spatial kernel creates a sinc frequency response with significant side lobes, causing ringing artifacts. The Gaussian filter's smooth spatial kernel has a Gaussian frequency response with no side lobes, producing clean, artifact-free smoothing.
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain IHPF and Image Enhancement. How do frequency domain filters contribute to image transformation?</div>
+      <div class="pyq-meta">2022 Part B Q6 · May 2025 Part A Q7 · 2–4 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>IHPF (Ideal High-Pass Filter):</strong><br>
+          H(u,v) = 0 if D(u,v) ≤ D₀; H(u,v) = 1 if D(u,v) &gt; D₀<br>
+          The IHPF completely blocks all frequencies within a circle of radius D₀ from the center (these are low frequencies = smooth areas). All frequencies outside D₀ (high frequencies = edges, fine detail) pass unchanged.<br><br>
+          Effect: The result is an image containing primarily edges and texture — the smooth background becomes dark (black). Useful for edge detection in frequency domain.<br><br>
+          Problem: Sharp cutoff → ringing artifacts (Gibbs effect) in the filtered image, especially near strong edges.<br><br>
+
+          <strong>How Frequency Domain Filters Contribute to Image Transformation:</strong><br>
+          1. <em>Low-pass filtering:</em> Removes high-frequency noise → smooth/blur the image<br>
+          2. <em>High-pass filtering:</em> Removes low-frequency smooth areas → enhances edges and sharpens<br>
+          3. <em>Band-pass/band-reject:</em> Remove periodic noise patterns (remove specific frequency bands causing interference patterns)<br>
+          4. <em>Notch filtering:</em> Remove specific periodic noise frequencies (e.g., 50Hz power line interference in MRI)<br><br>
+          The convolution theorem (f★h ↔ F·H) makes frequency filtering computationally efficient — multiplying pointwise in frequency domain is much faster than spatial convolution.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ COLOR MODELS ══ -->
+<section class="section" id="color">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2 class="section-title">Color Models</h2>
+    <span class="importance-pill badge badge-red">🔥 80% · Part B/C</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Why Different Color Models?</h3>
+    <p>Different applications need different ways to represent color. RGB is natural for displays; HSI is natural for human perception; CMY/CMYK is natural for printing. No single model serves all purposes.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐ 1. RGB Color Model</h3>
+    <p>The <span class="highlight">RGB model</span> represents color as a combination of Red, Green, and Blue primaries. It is an <strong>additive</strong> color model — adding all three at full intensity gives white.</p>
+    <div class="formula-box">
+      <span class="label">RGB Cube</span>
+      <div class="formula">Each pixel: (R, G, B) ∈ [0, 255]³ for 24-bit color</div>
+      <div class="note">Total colors: 256³ = 16.7 million. Black = (0,0,0). White = (255,255,255).</div>
+      <div class="note">Primary colors: Red=(255,0,0), Green=(0,255,0), Blue=(0,0,255)</div>
+      <div class="note">Secondary: Cyan=(0,255,255), Magenta=(255,0,255), Yellow=(255,255,0)</div>
+    </div>
+    <p><strong>Problem with RGB for image processing:</strong> R, G, B are highly correlated (changing luminosity changes all three). Hard to process "color" independent of "brightness".</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ 2. CMY/CMYK Model (Printing)</h3>
+    <p><span class="highlight">CMY</span> is a <strong>subtractive</strong> model used in color printing. Inks SUBTRACT light from white paper.</p>
+    <div class="formula-box">
+      <span class="label">RGB → CMY Conversion</span>
+      <div class="formula">[C]   [1]   [R/255]</div>
+      <div class="formula">[M] = [1] - [G/255]</div>
+      <div class="formula">[Y]   [1]   [B/255]</div>
+      <div class="note">CMYK adds K (black) for efficiency: K = min(C,M,Y). C' = (C-K)/(1-K). Saves ink.</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ 3. HSI Color Model — Most RTU-Tested</h3>
+    <p>The <span class="highlight">HSI model</span> separates color information into three components that align with human perception:</p>
+    <ul>
+      <li><strong>H (Hue):</strong> The dominant color wavelength — what color it actually is (red, green, blue...). Range: [0°, 360°]</li>
+      <li><strong>S (Saturation):</strong> How pure the color is — how far from gray. Range: [0, 1]. S=0 = gray.</li>
+      <li><strong>I (Intensity):</strong> Overall brightness. Range: [0, 1]. Independent of H and S.</li>
+    </ul>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 580 180" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="290" y="18" text-anchor="middle" fill="#22d3ee" font-family="IBM Plex Mono" font-size="11">HSI Color Space — Double Cone</text>
+        <!-- Double cone -->
+        <polygon points="200,160 290,80 380,160" fill="#f04a7a30" stroke="#f04a7a" stroke-width="1.5"/>
+        <polygon points="200,0 290,80 380,0" fill="#4a9af030" stroke="#4a9af0" stroke-width="1.5"/>
+        <line x1="290" y1="0" x2="290" y2="160" stroke="#f0c44a" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <text x="292" y="85" fill="#f0c44a" font-family="IBM Plex Mono" font-size="10">I axis</text>
+        <!-- Labels -->
+        <text x="290" y="12" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">I=1 (White)</text>
+        <text x="290" y="172" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">I=0 (Black)</text>
+        <text x="195" y="85" text-anchor="end" fill="#22d3ee" font-family="IBM Plex Mono" font-size="9">H=240°</text>
+        <text x="385" y="85" fill="#22d3ee" font-family="IBM Plex Mono" font-size="9">H=0°/360°</text>
+        <!-- S arrow -->
+        <line x1="290" y1="80" x2="380" y2="80" stroke="#4af0b4" stroke-width="1.5"/>
+        <text x="335" y="75" fill="#4af0b4" font-family="IBM Plex Mono" font-size="9">S →</text>
+        <!-- Right panel -->
+        <rect x="420" y="25" width="150" height="120" rx="6" fill="#1c2130" stroke="#2a3045"/>
+        <text x="495" y="45" text-anchor="middle" fill="#22d3ee" font-family="IBM Plex Mono" font-size="9">Why HSI?</text>
+        <text x="430" y="65" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">• Matches human perception</text>
+        <text x="430" y="80" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">• H and S decoupled from I</text>
+        <text x="430" y="95" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">• Process I separately</text>
+        <text x="430" y="110" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">• Easy color description</text>
+        <text x="430" y="130" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">• Histogram equalize only I!</text>
+      </svg>
+      <div class="diagram-cap">Fig 6.1 — HSI double-cone model: H=hue (angle), S=saturation (radius), I=intensity (height)</div>
+    </div>
+
+    <h4>RGB → HSI Conversion (Must Memorize)</h4>
+    <div class="formula-box">
+      <span class="label">RGB → HSI (when R,G,B normalized to [0,1])</span>
+      <div class="formula">I = (R + G + B) / 3</div>
+      <div class="formula" style="margin-top:8px">S = 1 - [3/(R+G+B)] · min(R,G,B)</div>
+      <div class="formula" style="margin-top:8px">θ = arccos{ [(R-G)+(R-B)] / [2·√((R-G)²+(R-B)(G-B))] }</div>
+      <div class="formula" style="margin-top:6px">H = θ         if B ≤ G</div>
+      <div class="formula">H = 360° - θ  if B > G</div>
+    </div>
+
+    <div class="example-box">
+      <div class="example-label">📌 RGB → HSI Example</div>
+      <p>Given R=0.5, G=0.5, B=0 (a dark yellow/olive color)</p>
+      <p><strong>I</strong> = (0.5+0.5+0)/3 = <strong>0.333</strong></p>
+      <p><strong>S</strong> = 1 - [3/(0.5+0.5+0)] · min(0.5,0.5,0) = 1 - [3/1] × 0 = 1 - 0 = <strong>1.0</strong> (fully saturated)</p>
+      <p><strong>θ:</strong> numerator = [(0.5-0.5)+(0.5-0)] / [2·√(...)] = 0.5/[2·√(0+0.25·0.5)]</p>
+      <p>= 0.5/[2·√0.125] = 0.5/0.707 = 0.707 → θ = arccos(0.707) = 45°</p>
+      <p>Since B=0 ≤ G=0.5: <strong>H = 45°</strong> (yellow-orange hue ✓)</p>
+    </div>
+
+    <h4>HSI → RGB Conversion (Sector-Based)</h4>
+    <div class="formula-box">
+      <span class="label">HSI → RGB (for 0° ≤ H &lt; 120° sector — RG sector)</span>
+      <div class="formula">B = I(1 - S)</div>
+      <div class="formula">R = I[1 + S·cos(H)/cos(60°-H)]</div>
+      <div class="formula">G = 3I - (R + B)</div>
+      <div class="note">For other sectors: subtract 120° from H for GB sector, subtract 240° for BR sector. Same formulas with R,G,B roles rotated.</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Why Process in HSI?</h3>
+    <p>In RGB, you cannot modify brightness without affecting color. In HSI:</p>
+    <ul>
+      <li>To enhance brightness: modify only the I channel</li>
+      <li>To change color: modify only H</li>
+      <li>To adjust color purity: modify only S</li>
+      <li>Histogram equalization → apply only to I channel → color-safe enhancement</li>
+    </ul>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Color Models</div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain HIS color model with an appropriate figure. Explain the conversion procedure from RGB color space to HSI color space.</div>
+      <div class="pyq-meta">2024 Part B Q3 · May 2025 Part B Q3 · June 2023 Part C Q4 · 4–10 marks ⭐ Repeated every year!</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>HSI Color Model:</strong><br>
+          The HSI (Hue-Saturation-Intensity) model describes color in terms of:<br>
+          • <strong>H (Hue):</strong> Dominant wavelength / color type. Measured as angle 0°–360°. Red≈0°, Green≈120°, Blue≈240°.<br>
+          • <strong>S (Saturation):</strong> Purity of color. 0=pure gray, 1=fully pure color.<br>
+          • <strong>I (Intensity):</strong> Overall brightness, independent of color. I=0 → black, I=1 → white.<br><br>
+
+          [Draw the HSI double cone: vertical I-axis from black (bottom) to white (top). At middle, a circle. Radius = saturation. Angle around circle = hue. Red at 0°, Green at 120°, Blue at 240°]<br><br>
+
+          <strong>Advantage over RGB:</strong><br>
+          RGB components are highly correlated with luminance. In HSI, I is completely separated from H and S. This allows processing brightness and color independently.<br><br>
+
+          <strong>RGB → HSI Conversion:</strong><br>
+          Given normalized R,G,B ∈ [0,1]:<br><br>
+
+          <strong>Intensity:</strong> I = (R + G + B)/3<br><br>
+
+          <strong>Saturation:</strong> S = 1 - [3/(R+G+B)] · min(R,G,B)<br>
+          (S = 0 when R=G=B = gray)<br><br>
+
+          <strong>Hue:</strong><br>
+          θ = arccos{ 0.5·[(R-G)+(R-B)] / √[(R-G)² + (R-B)(G-B)] }<br>
+          H = θ if B ≤ G<br>
+          H = 360° - θ if B > G<br><br>
+
+          <strong>Example:</strong> R=1, G=0, B=0 (pure red)<br>
+          I = 1/3 = 0.333<br>
+          S = 1 - [3/1]×0 = 1 (fully saturated)<br>
+          θ = arccos{0.5×[(1)+(1)]/√[1+0]} = arccos(1) = 0°<br>
+          B=0 ≤ G=0, so H = 0° ✓ (red hue)<br><br>
+
+          <strong>Applications of HSI:</strong><br>
+          1. Histogram equalization of I only → no color distortion<br>
+          2. Color-based object detection using only H channel<br>
+          3. Noise reduction in I channel without affecting hue<br>
+          4. Skin detection using H and S ranges
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain following with example: (a) Lookup Table (b) Additive vs Subtractive color system (c) Hue and Saturation (d) Hue-Max-Min-Diff (HMMD) Color Space</div>
+      <div class="pyq-meta">May 2025 Part C Q4 · 10 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>(a) Lookup Table (LUT):</strong><br>
+          A lookup table is a 1D array that maps each input gray level to an output gray level. Instead of computing the transform function for each pixel, simply look up the precomputed output.<br>
+          Example: For gamma correction (γ=0.5), precompute LUT[r] = 255×(r/255)^0.5 for r=0..255. Then for each pixel, output = LUT[pixel_value]. Fast: O(1) per pixel.<br><br>
+
+          <strong>(b) Additive vs Subtractive Color System:</strong><br>
+          • Additive (RGB): Colors made by adding light. Black = no light (0,0,0). White = all light (255,255,255). Used in displays, monitors, cameras. Primaries: Red, Green, Blue.<br>
+          • Subtractive (CMY): Colors made by subtracting light from white paper. Black = maximum ink absorption. White = no ink. Used in printing. Primaries: Cyan, Magenta, Yellow.<br>
+          Relationship: C=1-R, M=1-G, Y=1-B (complementary)<br><br>
+
+          <strong>(c) Hue and Saturation:</strong><br>
+          Hue: The dominant color attribute. Described by angle in HSI model: 0°=Red, 120°=Green, 240°=Blue. Hue is what lets you distinguish "red" from "blue."<br>
+          Saturation: Purity of the color. S=0 → achromatic (gray, no color). S=1 → pure, vivid color. Example: Pink = Red with low saturation (mixed with white).<br><br>
+
+          <strong>(d) HMMD Color Space:</strong><br>
+          HMMD (Hue-Max-Min-Diff) is a color space derived from RGB:<br>
+          H = Hue (same as HSI)<br>
+          Max = max(R,G,B), Min = min(R,G,B)<br>
+          Diff = Max - Min (similar to chroma/saturation measure)<br>
+          Used in MPEG-7 color descriptors for compact color representation and efficient image retrieval. Better for image database search than RGB because it better separates luminance from chroma information.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ WAVELET TRANSFORMS ══ -->
+<section class="section" id="wavelet">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2 class="section-title">Wavelet Transforms</h2>
+    <span class="importance-pill badge badge-yellow">70% · Part A</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Motivation — Why Wavelets?</h3>
+    <p>The Fourier Transform gives <strong>frequency information globally</strong> — it tells you which frequencies are present but not WHEN (WHERE in the image) they occur. For non-stationary signals (where frequency content varies with location), this is a limitation.</p>
+    <p><span class="highlight">Wavelet Transform</span> provides <strong>both time (spatial) and frequency information simultaneously</strong> — it can tell you which frequencies are present at which locations in the image.</p>
+
+    <div class="tip-box connect">
+      <div class="tip-icon">🔗</div>
+      <div class="tip-content">
+        <div class="tip-title">Fourier vs Wavelet — Key Distinction</div>
+        <p><strong>Fourier Transform:</strong> Basis functions are complex exponentials (sine/cosine) — infinite duration, global analysis.<br>
+        <strong>Wavelet Transform:</strong> Basis functions are "wavelets" — localized, finite-duration oscillations. Can zoom in to specific locations AND frequencies simultaneously.<br>
+        Analogy: FT is like listening to a whole song at once. WT is like reading a music score — you know what note plays at each moment.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Key Concepts</h3>
+
+    <h4>Mother Wavelet ψ(t)</h4>
+    <p>The fundamental wavelet function. All wavelets used in analysis are scaled and shifted versions of the mother wavelet:</p>
+    <div class="formula-box">
+      <span class="label">Scaled and Shifted Wavelets</span>
+      <div class="formula">ψₐ,ₜ(x) = (1/√a) · ψ((x-τ)/a)</div>
+      <div class="note">a = scale parameter (1/a ≈ frequency). Small a → high frequency (zoom in). Large a → low frequency (zoom out).</div>
+      <div class="note">τ = translation (position). 1/√a = normalization factor.</div>
+    </div>
+
+    <h4>Continuous Wavelet Transform (CWT)</h4>
+    <div class="formula-box">
+      <div class="formula">W(a,τ) = (1/√a) · ∫ f(x) · ψ*((x-τ)/a) dx</div>
+      <div class="note">ψ* = complex conjugate of ψ. W(a,τ) = wavelet coefficient at scale a and position τ.</div>
+    </div>
+
+    <h4>Discrete Wavelet Transform (DWT) — Used in Image Processing</h4>
+    <p>The DWT decomposes an image into a set of sub-bands at different scales and orientations using <strong>filter banks</strong>:</p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 620 180" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="310" y="18" text-anchor="middle" fill="#22d3ee" font-family="IBM Plex Mono" font-size="11">2D DWT Decomposition — One Level</text>
+        <!-- Input -->
+        <rect x="10" y="40" width="80" height="80" rx="4" fill="#1c2130" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="50" y="85" text-anchor="middle" fill="#22d3ee" font-family="IBM Plex Mono" font-size="9">Original</text>
+        <text x="50" y="98" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">N×N</text>
+        <polygon points="95,80 115,74 115,86" fill="#22d3ee"/>
+        <text x="115" y="65" fill="#22d3ee" font-family="IBM Plex Mono" font-size="8">DWT</text>
+        <!-- Output 4 subbands -->
+        <rect x="120" y="35" width="90" height="90" rx="4" fill="#1c2130" stroke="#2a3045" stroke-width="1"/>
+        <!-- LL -->
+        <rect x="123" y="38" width="42" height="42" rx="2" fill="#22d3ee30" stroke="#22d3ee" stroke-width="1"/>
+        <text x="144" y="63" text-anchor="middle" fill="#22d3ee" font-family="IBM Plex Mono" font-size="8">LL</text>
+        <text x="144" y="73" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">approx.</text>
+        <!-- LH -->
+        <rect x="167" y="38" width="42" height="42" rx="2" fill="#f0c44a20" stroke="#f0c44a" stroke-width="1"/>
+        <text x="188" y="63" text-anchor="middle" fill="#f0c44a" font-family="IBM Plex Mono" font-size="8">LH</text>
+        <text x="188" y="73" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">horiz.</text>
+        <!-- HL -->
+        <rect x="123" y="82" width="42" height="42" rx="2" fill="#f04a7a20" stroke="#f04a7a" stroke-width="1"/>
+        <text x="144" y="107" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">HL</text>
+        <text x="144" y="117" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">vertical</text>
+        <!-- HH -->
+        <rect x="167" y="82" width="42" height="42" rx="2" fill="#c44af020" stroke="#c44af0" stroke-width="1"/>
+        <text x="188" y="107" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="8">HH</text>
+        <text x="188" y="117" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">diagonal</text>
+
+        <!-- Explanation -->
+        <rect x="230" y="30" width="380" height="130" rx="6" fill="#1c2130" stroke="#2a3045"/>
+        <text x="420" y="52" text-anchor="middle" fill="#22d3ee" font-family="IBM Plex Mono" font-size="10">Sub-band meanings:</text>
+        <text x="240" y="72" fill="#22d3ee" font-family="IBM Plex Mono" font-size="9">LL (Low-Low):</text>
+        <text x="340" y="72" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">Approximation, coarse image (like thumbnail)</text>
+        <text x="240" y="90" fill="#f0c44a" font-family="IBM Plex Mono" font-size="9">LH (Low-High):</text>
+        <text x="340" y="90" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">Horizontal detail (horizontal edges)</text>
+        <text x="240" y="108" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">HL (High-Low):</text>
+        <text x="340" y="108" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">Vertical detail (vertical edges)</text>
+        <text x="240" y="126" fill="#c44af0" font-family="IBM Plex Mono" font-size="9">HH (High-High):</text>
+        <text x="340" y="126" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">Diagonal detail (diagonal edges)</text>
+        <text x="240" y="148" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Each sub-band is N/2 × N/2. Multi-level: apply DWT again to LL sub-band.</text>
+      </svg>
+      <div class="diagram-cap">Fig 7.1 — 2D DWT decomposes image into 4 sub-bands: LL (approximate) + LH+HL+HH (details)</div>
+    </div>
+
+    <h4>Applications of Wavelet Transform in Image Processing</h4>
+    <ul>
+      <li><strong>Image compression:</strong> JPEG 2000 uses DWT. Better quality at high compression vs JPEG (DCT).</li>
+      <li><strong>Denoising:</strong> Threshold small wavelet coefficients (noise) while keeping large ones (signal).</li>
+      <li><strong>Edge detection:</strong> High-frequency sub-bands (LH, HL, HH) correspond to edges.</li>
+      <li><strong>Feature extraction:</strong> Multi-resolution analysis for texture recognition.</li>
+      <li><strong>Medical imaging:</strong> Compact representation of MRI, CT scans.</li>
+    </ul>
+  </div>
+
+  <div class="theory-block">
+    <h3>Common Wavelets</h3>
+    <table class="comp-table">
+      <tr><th>Wavelet</th><th>Shape</th><th>Property</th><th>Use</th></tr>
+      <tr><td><span class="highlight">Haar</span></td><td>Square wave</td><td>Simplest, orthogonal</td><td>Teaching, real-time</td></tr>
+      <tr><td><span class="highlight">Daubechies</span></td><td>Asymmetric, compact</td><td>Orthogonal, various orders</td><td>Signal analysis, compression</td></tr>
+      <tr><td><span class="highlight">Morlet</span></td><td>Sinusoid × Gaussian</td><td>Complex, good frequency res.</td><td>Time-frequency analysis</td></tr>
+      <tr><td><span class="highlight">Mexican Hat</span></td><td>2nd derivative Gaussian</td><td>Same as LoG! Isotropic</td><td>Edge detection (connects to Unit 6 LoG!)</td></tr>
+    </table>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Wavelet Transform</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. What is the significance of Wavelet Transforms?</div>
+      <div class="pyq-meta">May 2025 Part A Q8 · 2 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div class="pyq-answer">
+          <strong>Significance of Wavelet Transforms:</strong><br><br>
+          1. <em>Multi-resolution analysis:</em> Wavelets represent images at multiple scales simultaneously — like seeing both the forest and the trees. This enables analysis of both coarse structure (low frequencies) and fine details (high frequencies) at their natural scales.<br><br>
+          2. <em>Joint time-frequency localization:</em> Unlike Fourier transform (which gives global frequency information), wavelets provide BOTH location AND frequency information. A wavelet coefficient tells you "this frequency is strong at this position."<br><br>
+          3. <em>Image compression (JPEG 2000):</em> DWT provides better compression than DCT (JPEG) because it analyzes the image at multiple scales. High-frequency detail coefficients can be aggressively quantized or discarded.<br><br>
+          4. <em>Image denoising:</em> Noise appears as many small wavelet coefficients spread across all scales, while signal concentrates in few large coefficients. Thresholding small coefficients removes noise.<br><br>
+          5. <em>Edge detection:</em> The LH, HL, HH sub-bands directly correspond to horizontal, vertical, and diagonal edges.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PYQ MASTER ══ -->
+<section class="section" id="pyq-master">
+  <div class="section-header">
+    <span class="section-num">✦</span>
+    <h2 class="section-title">All RTU PYQs — Master List</h2>
+    <span class="importance-pill badge badge-red">Complete Reference</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Part A Questions (2 marks) — Unit 3</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>Discuss about contrast stretching and intensity slicing.</td><td>Intensity Transforms ⭐</td></tr>
+      <tr><td>2025</td><td>What are the types of image enhancement available?</td><td>Enhancement Overview</td></tr>
+      <tr><td>2025</td><td>What is the role of Fourier transform in image processing?</td><td>DFT</td></tr>
+      <tr><td>2025</td><td>How do frequency domain filters contribute to image transformation?</td><td>Freq. Filters ⭐</td></tr>
+      <tr><td>2025</td><td>What is the significance of Wavelet Transforms?</td><td>Wavelets</td></tr>
+      <tr><td>2024</td><td>Discuss about contrast stretching and intensity slicing.</td><td>Intensity Transforms ⭐</td></tr>
+      <tr><td>2024</td><td>How are color images represented digitally?</td><td>Color Models</td></tr>
+      <tr><td>2024</td><td>What is unsharp masking?</td><td>Sharpening</td></tr>
+      <tr><td>2024</td><td>What are intensity transform functions?</td><td>Intensity Transforms</td></tr>
+      <tr><td>2024</td><td>What is directional derivative? Where is it used?</td><td>Gradient</td></tr>
+      <tr><td>2024</td><td>What is spatial filtering?</td><td>Spatial Filtering ⭐</td></tr>
+      <tr><td>2023</td><td>Define pixelization and false contouring effect in images.</td><td>Sampling effects</td></tr>
+      <tr><td>2023</td><td>Explain shifting and convolution properties of 2-D DFT.</td><td>DFT Properties ⭐</td></tr>
+      <tr><td>2023</td><td>What is the difference between box LPF and Gaussian LPF?</td><td>Freq. Filters ⭐</td></tr>
+      <tr><td>2023</td><td>What is bit plane slicing in image thresholding?</td><td>Bit Plane Slicing ⭐</td></tr>
+      <tr><td>2022</td><td>Define Histogram?</td><td>Histogram</td></tr>
+      <tr><td>2022</td><td>What are the gray level transformation function of an image?</td><td>Intensity Transforms</td></tr>
+    </table>
+
+    <h3 style="margin-top:20px">Part B Questions (4 marks) — Unit 3</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>Show the bit plane slicing of the image [[7,6,5],[4,3,2],[1,1,0]]</td><td>Bit Plane ⭐⭐</td></tr>
+      <tr><td>2025</td><td>Prove whether DFT of discrete signal is continuous or discrete.</td><td>DFT Properties</td></tr>
+      <tr><td>2025</td><td>Explain HIS color model + conversion from RGB to HSI.</td><td>HSI Color Model ⭐⭐</td></tr>
+      <tr><td>2025</td><td>Describe homomorphic filtering. (→ Unit 4 topic)</td><td>Cross-unit</td></tr>
+      <tr><td>2024</td><td>Explain what you would expect from sampling and quantization on image.</td><td>Sampling & Quantization</td></tr>
+      <tr><td>2024</td><td>Explain HIS color model + RGB to HSI conversion.</td><td>HSI Color Model ⭐⭐</td></tr>
+      <tr><td>2023</td><td>Perform histogram matching for given input to achieve target distribution.</td><td>Histogram Matching ⭐⭐</td></tr>
+      <tr><td>2023</td><td>Discuss different intensity transformation functions with graphical representation.</td><td>Intensity Transforms ⭐</td></tr>
+      <tr><td>2022</td><td>What is spatial filtering? Define spatial correlation and convolution with example.</td><td>Spatial Filtering ⭐⭐</td></tr>
+      <tr><td>2022</td><td>Explain IHPF and Image Enhancement.</td><td>IHPF ⭐</td></tr>
+    </table>
+
+    <h3 style="margin-top:20px">Part C Questions (10 marks) — Unit 3</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>Describe histogram equalization. Obtain for 5×5 image. Write inference before/after.</td><td>Histogram Equalization ⭐⭐⭐</td></tr>
+      <tr><td>2025</td><td>Explain following terms: LUT, Additive vs Subtractive, Hue & Saturation, HMMD</td><td>Color Terms ⭐</td></tr>
+      <tr><td>2025</td><td>Consider image I with filters F and L. Correlate + apply L.</td><td>Spatial Filtering Numerical ⭐⭐⭐</td></tr>
+      <tr><td>2024</td><td>Consider image in Fig.2. Explain horizontal gradient, vertical gradient, Sobel operations.</td><td>Gradient Operators ⭐⭐</td></tr>
+      <tr><td>2024</td><td>Correlate image I with filter F + apply filter L.</td><td>Spatial Filtering Numerical ⭐⭐⭐</td></tr>
+      <tr><td>2023</td><td>Discuss noise PDFs + restoration in presence of noise + linear & nonlinear filters.</td><td>(→ Unit 4 topic)</td></tr>
+      <tr><td>2023</td><td>Explain HSI color model. Compare with RGB. Give RGB↔HSI expressions.</td><td>HSI Model ⭐⭐</td></tr>
+      <tr><td>2022</td><td>What is image sharpening? Explain first and second order derivatives.</td><td>Sharpening ⭐⭐</td></tr>
+    </table>
+  </div>
+
+  <div class="tip-box trick">
+    <div class="tip-icon">🏆</div>
+    <div class="tip-content">
+      <div class="tip-title">Top 5 Must-Prepare Topics — Unit 3</div>
+      <p>
+        <strong>1.</strong> Histogram Equalization — full numerical procedure (step-by-step CDF table + mapping)<br>
+        <strong>2.</strong> Spatial Filtering numerical — correlate I with F, apply Laplacian L (from 2024 &amp; 2025 Part C Q3)<br>
+        <strong>3.</strong> HSI Color Model — definition of H/S/I + RGB→HSI formulas + example<br>
+        <strong>4.</strong> Intensity Transform Functions — all 5 types with graphs (log, gamma, negative, piecewise, threshold)<br>
+        <strong>5.</strong> DFT Properties — convolution theorem + shift property (2 marks but appears EVERY year)
+      </p>
+    </div>
+  </div>
+
+  <div class="tip-box validate">
+    <div class="tip-icon">📋</div>
+    <div class="tip-content">
+      <div class="tip-title">Cross-Unit Connections — Mention These in Part C Answers</div>
+      <p>
+        <strong>Unit 3 → Unit 4:</strong> The Gaussian filter from spatial filtering = noise suppressor in Unit 4. The convolution theorem from DFT properties = foundation of frequency domain restoration in Unit 4.<br>
+        <strong>Unit 3 → Unit 5:</strong> The histogram p(rₖ) from histogram processing = exact input to Huffman coding in Unit 5. Image entropy (Unit 5) = -Σp·log p, which is derived from the histogram!<br>
+        <strong>Unit 3 → Unit 6:</strong> Sobel/Prewitt operators from sharpening = edge detectors in Unit 6. High-pass filters from frequency filtering → detect edges (Unit 6).<br>
+        <strong>Unit 3 → Unit 4:</strong> HSI model used in homomorphic filtering — I channel = illumination, processed separately.
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<button class="sidebar-toggle" id="burgerBtn" onclick="openSidebar()">☰</button>
+
+<script>
+  function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('overlay').classList.add('visible');
+    document.getElementById('burgerBtn').classList.add('open');
+    document.getElementById('burgerBtn').textContent = '✕';
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('visible');
+    document.getElementById('burgerBtn').classList.remove('open');
+    document.getElementById('burgerBtn').textContent = '☰';
+    document.body.style.overflow = '';
+  }
+
+  const sections = document.querySelectorAll('.section');
+  const navItems = document.querySelectorAll('.nav-item');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => { if (window.scrollY >= s.offsetTop - 100) current = s.id; });
+    navItems.forEach(n => {
+      n.classList.remove('active');
+      if (n.getAttribute('href') === '#' + current) n.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
