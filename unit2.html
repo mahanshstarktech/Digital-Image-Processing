@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIP Unit 2 — Introduction to Image Processing</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;600;700;800&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2130;
+    --border: #2a3045;
+    --accent: #f97316;
+    --accent2: #fbbf24;
+    --accent3: #f04a7a;
+    --accent4: #4a9af0;
+    --accent5: #34d399;
+    --text: #e8eaf2;
+    --text-dim: #8892a8;
+    --mono: 'IBM Plex Mono', monospace;
+    --heading: 'Syne', sans-serif;
+    --body: 'Source Serif 4', serif;
+    --sidebar-width: 260px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 16px; line-height: 1.7; }
+
+  /* ── CHAPTER NAV ── */
+  .chapter-nav {
+    background: #080a10; border-bottom: 1px solid var(--border);
+    padding: 0 20px; display: flex; align-items: center; gap: 4px;
+    position: sticky; top: 0; z-index: 200; overflow-x: auto;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .chapter-nav::-webkit-scrollbar { display: none; }
+  .chapter-nav-label {
+    font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+    letter-spacing: 2px; text-transform: uppercase; padding: 12px 10px 12px 0;
+    white-space: nowrap; border-right: 1px solid var(--border); margin-right: 8px; flex-shrink: 0;
+  }
+  .ch-link {
+    font-family: var(--mono); font-size: 11px; padding: 8px 14px; border-radius: 5px;
+    text-decoration: none; color: var(--text-dim); white-space: nowrap; transition: all 0.2s; flex-shrink: 0;
+  }
+  .ch-link:hover { color: var(--text); background: var(--surface2); }
+  .ch-link.active { background: var(--surface2); color: var(--accent); border: 1px solid var(--accent); }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(135deg, #0d0f14 0%, #1a110a 50%, #0d1210 100%);
+    padding: 48px 32px 36px; border-bottom: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 39px, #f9731608 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, #f9731608 40px);
+  }
+  .hero-inner { position: relative; max-width: 960px; margin: 0 auto; }
+  .hero-tag { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+  .hero h1 { font-family: var(--heading); font-size: clamp(26px, 5vw, 52px); font-weight: 800; line-height: 1.1; color: #fff; }
+  .hero h1 span { color: var(--accent); }
+  .hero-sub { margin-top: 12px; color: var(--text-dim); font-size: 15px; max-width: 580px; }
+  .hero-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+  .badge { font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 4px; border: 1px solid; }
+  .badge-green { color: var(--accent5); border-color: var(--accent5); background: #34d39918; }
+  .badge-yellow { color: var(--accent2); border-color: var(--accent2); background: #fbbf2418; }
+  .badge-red { color: var(--accent3); border-color: var(--accent3); background: #f04a7a18; }
+  .badge-blue { color: var(--accent4); border-color: var(--accent4); background: #4a9af018; }
+  .badge-orange { color: var(--accent); border-color: var(--accent); background: #f9731618; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; max-width: 1280px; margin: 0 auto; }
+
+  .sidebar-toggle {
+    display: none; position: fixed; bottom: 20px; right: 20px; z-index: 1000;
+    width: 50px; height: 50px; border-radius: 50%; background: var(--accent);
+    border: none; cursor: pointer; font-size: 20px; color: #fff;
+    align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(249,115,22,0.5); transition: transform 0.2s;
+  }
+  .sidebar-toggle:hover { transform: scale(1.1); }
+  .sidebar-toggle.open { background: var(--accent3); }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 98; backdrop-filter: blur(2px); }
+  .sidebar-overlay.visible { display: block; }
+
+  .sidebar {
+    width: var(--sidebar-width); min-width: var(--sidebar-width); padding: 28px 16px;
+    border-right: 1px solid var(--border); position: sticky; top: 44px;
+    height: calc(100vh - 44px); overflow-y: auto; transition: transform 0.3s ease;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .sidebar-title { font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+  .sidebar-close { display: none; background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer; padding: 2px 8px; font-family: var(--mono); font-size: 11px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px;
+    cursor: pointer; font-family: var(--heading); font-size: 13px; font-weight: 600;
+    color: var(--text-dim); transition: all 0.2s; margin-bottom: 2px; text-decoration: none;
+  }
+  .nav-item:hover, .nav-item.active { background: var(--surface2); color: var(--text); }
+  .nav-item.active { color: var(--accent); border-left: 2px solid var(--accent); }
+  .nav-imp { margin-left: auto; font-family: var(--mono); font-size: 10px; padding: 2px 6px; border-radius: 3px; background: var(--surface2); }
+  .nav-imp.high { color: var(--accent3); }
+  .nav-imp.med { color: var(--accent2); }
+  .nav-imp.low { color: var(--accent5); }
+
+  .content { flex: 1; padding: 32px 36px; max-width: calc(100% - var(--sidebar-width)); overflow-x: hidden; }
+
+  .section { margin-bottom: 60px; scroll-margin-top: 60px; }
+  .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .section-num { font-family: var(--mono); font-size: 12px; color: var(--accent); background: #f9731615; border: 1px solid #f9731640; padding: 4px 8px; border-radius: 4px; min-width: 36px; text-align: center; }
+  .section-title { font-family: var(--heading); font-size: clamp(18px,3vw,22px); font-weight: 800; color: #fff; }
+  .importance-pill { margin-left: auto; font-family: var(--mono); font-size: 11px; padding: 4px 12px; border-radius: 20px; }
+
+  .theory-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px; margin-bottom: 20px; }
+  .theory-block h3 { font-family: var(--heading); font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
+  .theory-block p { margin-bottom: 10px; color: var(--text); }
+  .theory-block p:last-child { margin-bottom: 0; }
+
+  .formula-box {
+    background: #0a0e18; border: 1px solid var(--accent4); border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 16px 20px; margin: 16px 0;
+    font-family: var(--mono); font-size: 14px; overflow-x: auto;
+  }
+  .formula-box .label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; display: block; }
+  .formula-box .formula { color: #a8d4ff; }
+  .formula-box .note { color: var(--text-dim); font-size: 12px; margin-top: 8px; }
+
+  .tip-box { border-radius: 8px; padding: 16px 18px; margin: 14px 0; display: flex; gap: 12px; }
+  .tip-box.trick { background: #fbbf2412; border: 1px solid #fbbf2440; }
+  .tip-box.validate { background: #34d39912; border: 1px solid #34d39940; }
+  .tip-box.connect { background: #4a9af012; border: 1px solid #4a9af040; }
+  .tip-box.warning { background: #f04a7a12; border: 1px solid #f04a7a40; }
+  .tip-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+  .tip-content { flex: 1; }
+  .tip-title { font-family: var(--heading); font-size: 13px; font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .tip-box.trick .tip-title { color: var(--accent2); }
+  .tip-box.validate .tip-title { color: var(--accent5); }
+  .tip-box.connect .tip-title { color: var(--accent4); }
+  .tip-box.warning .tip-title { color: var(--accent3); }
+  .tip-content p { font-size: 14px; color: var(--text); margin: 0; }
+
+  .example-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; margin: 14px 0; }
+  .example-label { font-family: var(--mono); font-size: 10px; color: var(--accent3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+
+  .pyq-section { background: #07090f; border: 1px solid #f9731630; border-radius: 10px; padding: 20px 24px; margin-top: 24px; }
+  .pyq-header { font-family: var(--heading); font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 16px; }
+  .pyq-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+  .pyq-q { font-family: var(--heading); font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .pyq-meta { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 12px; }
+  .pyq-toggle { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 6px 14px; cursor: pointer; font-family: var(--mono); font-size: 11px; color: var(--accent); margin-top: 10px; transition: all 0.2s; }
+  .pyq-toggle:hover { background: var(--accent); color: #000; }
+  .answer-content { display: none; margin-top: 14px; }
+  .answer-content.open { display: block; }
+
+  .comp-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; display: block; overflow-x: auto; }
+  .comp-table th { background: var(--surface2); padding: 10px 14px; text-align: left; font-family: var(--heading); font-weight: 700; color: var(--accent); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .comp-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .comp-table tr:last-child td { border-bottom: none; }
+  .comp-table tr:hover td { background: var(--surface2); }
+
+  .steps { margin: 14px 0; }
+  .step-item { display: flex; gap: 14px; margin-bottom: 12px; }
+  .step-num { width: 28px; height: 28px; min-width: 28px; border-radius: 50%; background: var(--accent); color: #000; font-family: var(--mono); font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-text { font-size: 15px; padding-top: 4px; }
+
+  .imp-bar-wrap { margin-bottom: 8px; }
+  .imp-bar-label { font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .imp-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .imp-bar-fill { height: 100%; border-radius: 3px; }
+  .imp-high .imp-bar-fill { background: var(--accent3); }
+  .imp-med .imp-bar-fill { background: var(--accent2); }
+  .imp-low .imp-bar-fill { background: var(--accent5); }
+
+  .diagram-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin: 16px 0; text-align: center; overflow-x: auto; }
+  .diagram-cap { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 10px; text-align: center; }
+
+  code { font-family: var(--mono); background: var(--surface2); padding: 2px 6px; border-radius: 3px; font-size: 13px; color: var(--accent4); }
+  pre { background: #070a10; border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; font-family: var(--mono); font-size: 13px; color: var(--accent5); margin: 12px 0; line-height: 1.6; }
+  ul, ol { padding-left: 20px; margin: 10px 0; }
+  li { margin-bottom: 6px; font-size: 15px; }
+  .highlight { color: var(--accent); font-weight: 600; }
+  .hl-green { color: var(--accent5); }
+  .hl-yellow { color: var(--accent2); }
+  .hl-red { color: var(--accent3); }
+  .hl-blue { color: var(--accent4); }
+  h4 { font-family: var(--heading); font-size: 15px; font-weight: 700; color: var(--text); margin: 16px 0 8px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* pixel grid for illustration */
+  .pixel-grid { display: grid; gap: 2px; margin: 12px 0; }
+  .pixel-cell { display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; border-radius: 2px; aspect-ratio: 1; min-width: 32px; min-height: 32px; }
+
+  @media (max-width: 768px) {
+    .sidebar { position: fixed; top: 0; left: 0; height: 100vh; z-index: 99; background: var(--bg); transform: translateX(-100%); border-right: 1px solid var(--border); }
+    .sidebar.open { transform: translateX(0); box-shadow: 4px 0 30px rgba(0,0,0,0.8); }
+    .sidebar-close { display: block; }
+    .sidebar-toggle { display: flex; }
+    .content { max-width: 100%; padding: 20px 16px; }
+    .hero { padding: 32px 20px 28px; }
+    .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .importance-pill { margin-left: 0; }
+    .theory-block { padding: 16px; }
+    .pyq-section { padding: 14px; }
+  }
+  @media (min-width: 769px) {
+    .sidebar-toggle { display: none !important; }
+    .sidebar-overlay { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="chapter-nav">
+  <span class="chapter-nav-label">DIP · RTU</span>
+  <a class="ch-link active" href="unit2.html">🖼️ Unit 2: Intro</a>
+  <a class="ch-link" href="unit3.html">🎨 Unit 3: Enhancement</a>
+  <a class="ch-link" href="unit4.html">🔧 Unit 4: Restoration</a>
+  <a class="ch-link" href="unit5.html">📦 Unit 5: Compression</a>
+  <a class="ch-link" href="unit6.html">🔍 Unit 6: Segmentation</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-tag">📚 B.Tech VI Sem · RTU Exam Prep · Digital Image Processing</div>
+    <h1>Unit 2: Introduction to<br><span>Image Processing</span></h1>
+    <p class="hero-sub">Digital image representation, Sampling & Quantization (with numericals), Image acquisition, Color models — complete RTU PYQ solutions 2022–2025 with tricks and diagrams.</p>
+    <div class="hero-badges">
+      <span class="badge badge-red">🔥 Foundation Unit</span>
+      <span class="badge badge-yellow">RTU PYQs Solved</span>
+      <span class="badge badge-green">All Numericals</span>
+      <span class="badge badge-blue">Unit Connections</span>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+<div class="layout">
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">Topics</span>
+    <button class="sidebar-close" onclick="closeSidebar()">✕ Close</button>
+  </div>
+  <a class="nav-item active" href="#overview" onclick="closeSidebar()">📊 Overview & Importance</a>
+  <a class="nav-item" href="#what-is-dip" onclick="closeSidebar()">🔭 What is DIP?<span class="nav-imp low">65%</span></a>
+  <a class="nav-item" href="#digital-image" onclick="closeSidebar()">🖼️ Digital Image Representation<span class="nav-imp high">85%</span></a>
+  <a class="nav-item" href="#sampling" onclick="closeSidebar()">📐 Sampling & Quantization<span class="nav-imp high">90%</span></a>
+  <a class="nav-item" href="#acquisition" onclick="closeSidebar()">📷 Image Acquisition<span class="nav-imp high">80%</span></a>
+  <a class="nav-item" href="#steps" onclick="closeSidebar()">🔄 Steps in DIP<span class="nav-imp med">70%</span></a>
+  <a class="nav-item" href="#color" onclick="closeSidebar()">🌈 Color Image Representation<span class="nav-imp high">85%</span></a>
+  <a class="nav-item" href="#artifacts" onclick="closeSidebar()">⚠️ Artifacts (Pixelization etc.)<span class="nav-imp high">80%</span></a>
+  <a class="nav-item" href="#pyq-master" onclick="closeSidebar()">📝 All PYQs Master List</a>
+</nav>
+
+<main class="content">
+
+<!-- ══════════════════════════════════ OVERVIEW ══════════════════════════════════ -->
+<section class="section" id="overview">
+  <div class="section-header">
+    <span class="section-num">00</span>
+    <h2 class="section-title">Topic Importance Analysis</h2>
+  </div>
+  <div class="theory-block">
+    <p>Based on RTU PYQs 2022–2025, here is topic importance for Unit 2:</p>
+    <div class="imp-bar-wrap imp-high" style="margin-top:16px">
+      <div class="imp-bar-label"><span>Sampling & Quantization (with numerical effects)</span><span style="color:#f04a7a">90%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:90%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Digital Image Representation (pixels, resolution, bit depth)</span><span style="color:#f04a7a">85%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:85%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Color Image Representation (RGB, CMY, pseudo-color)</span><span style="color:#f04a7a">85%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:85%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-high" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Image Acquisition (sensors, cameras, CCD)</span><span style="color:#f0c44a">80%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:80%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Pixelization & False Contouring (artifacts)</span><span style="color:#f0c44a">80%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:80%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-med" style="margin-top:10px">
+      <div class="imp-bar-label"><span>Steps in Digital Image Processing</span><span style="color:#34d399">70%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:70%"></div></div>
+    </div>
+    <div class="imp-bar-wrap imp-low" style="margin-top:10px">
+      <div class="imp-bar-label"><span>What is DIP / Scope & Applications</span><span style="color:#34d399">65%</span></div>
+      <div class="imp-bar"><div class="imp-bar-fill" style="width:65%"></div></div>
+    </div>
+  </div>
+  <div class="tip-box trick">
+    <div class="tip-icon">⚡</div>
+    <div class="tip-content">
+      <div class="tip-title">Exam Strategy</div>
+      <p>Unit 2 topics appear mostly in Part A (2-mark) and Part B (4-mark). The RTU 2024 B Q1 on sampling/quantization effects and the 2023 A Q1 on pixelization & false contouring are the most-repeated. <strong>Image acquisition with the block diagram</strong> is a safe 4-mark answer. Always connect Unit 2 to later units — sampling → compression (Unit 5), quantization → bit-plane slicing (Unit 3).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ WHAT IS DIP ══════════════════════════════════ -->
+<section class="section" id="what-is-dip">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">What is Digital Image Processing?</h2>
+    <span class="importance-pill badge badge-green">65% · Conceptual Intro</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Definition</h3>
+    <p><span class="highlight">Digital Image Processing (DIP)</span> is the use of computer algorithms to process digital images — to improve their quality, extract useful information, or transform them for specific applications.</p>
+    <p><strong>Three levels of processing:</strong></p>
+    <ul>
+      <li><strong>Low-level processing:</strong> Input = image, Output = image. Noise removal, sharpening, contrast enhancement. (Unit 3 & 4)</li>
+      <li><strong>Mid-level processing:</strong> Input = image, Output = features (edges, regions). Segmentation, object recognition. (Unit 6)</li>
+      <li><strong>High-level processing:</strong> Input = features, Output = meaning. Scene understanding, AI, classification.</li>
+    </ul>
+  </div>
+
+  <div class="theory-block">
+    <h3>Applications of DIP (Write at least 5 for 2-mark answer)</h3>
+    <ul>
+      <li><strong>Medical Imaging:</strong> CT, MRI, X-ray enhancement; tumor detection; segmentation of organs</li>
+      <li><strong>Remote Sensing:</strong> Satellite imagery for land use mapping, disaster monitoring, weather forecasting</li>
+      <li><strong>Industrial Inspection:</strong> Automated defect detection in manufacturing, PCB inspection</li>
+      <li><strong>Forensics:</strong> Fingerprint analysis, face recognition, document forgery detection</li>
+      <li><strong>Astronomy:</strong> Enhancing images from telescopes, removing atmospheric distortion</li>
+      <li><strong>Military:</strong> Missile guidance, surveillance, target recognition</li>
+      <li><strong>Entertainment:</strong> Film special effects, image/video compression (JPEG, MPEG)</li>
+      <li><strong>Document Processing:</strong> OCR (Optical Character Recognition), barcode reading</li>
+    </ul>
+  </div>
+
+  <div class="tip-box connect">
+    <div class="tip-icon">🔗</div>
+    <div class="tip-content">
+      <div class="tip-title">Unit Connection: DIP Spans All Units</div>
+      <p>Unit 2 is the foundation. Every topic you study connects here:<br>
+      Unit 3 = Low-level processing (enhancement). Unit 4 = Restoration (low-level). Unit 5 = Compression (storage/transmission). Unit 6 = Segmentation (mid-level). Whenever you write a Part C answer in any unit, start with "Digital image processing is..." — it earns an intro paragraph.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ DIGITAL IMAGE ══════════════════════════════════ -->
+<section class="section" id="digital-image">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2 class="section-title">Digital Image Representation</h2>
+    <span class="importance-pill badge badge-red">85% · Part A/B</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What is a Digital Image?</h3>
+    <p>A <span class="highlight">digital image</span> is a 2D function f(x, y) where x and y are <strong>spatial (plane) coordinates</strong> and f is the <strong>amplitude (intensity or gray level)</strong> at that point. When x, y, and f are all <strong>finite discrete quantities</strong>, the image is a digital image.</p>
+
+    <div class="formula-box">
+      <span class="label">Digital Image as a 2D Function</span>
+      <div class="formula">f(x, y) : pixel value at row x, column y</div>
+      <div class="formula" style="margin-top:8px">Image size: M rows × N columns = M×N pixels</div>
+      <div class="formula" style="margin-top:8px">Pixel value range: [0, L-1] where L = 2ᵏ (k = number of bits)</div>
+      <div class="note">For 8-bit image: L = 256, range [0, 255]. 0 = black, 255 = white.</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 640 200" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="320" y="18" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="11">Digital Image = 2D Array of Pixels</text>
+        <!-- 5x5 pixel grid -->
+        <g transform="translate(20,30)">
+          <text x="80" y="-8" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">y (columns) →</text>
+          <text x="-10" y="80" fill="#8892a8" font-family="IBM Plex Mono" font-size="9" transform="rotate(-90,-10,80)">x (rows) ↓</text>
+          <!-- Column indices -->
+          <text x="30" y="10" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">0</text>
+          <text x="62" y="10" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">1</text>
+          <text x="94" y="10" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">2</text>
+          <text x="126" y="10" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">3</text>
+          <text x="158" y="10" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">N-1</text>
+          <!-- Row indices -->
+          <text x="10" y="40" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">0</text>
+          <text x="10" y="72" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">1</text>
+          <text x="10" y="104" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">2</text>
+          <text x="10" y="136" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">M-1</text>
+          <!-- Pixel cells -->
+          <rect x="16" y="16" width="28" height="28" fill="#202a38" stroke="#2a3045"/><text x="30" y="34" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">200</text>
+          <rect x="48" y="16" width="28" height="28" fill="#151e2c" stroke="#2a3045"/><text x="62" y="34" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">50</text>
+          <rect x="80" y="16" width="28" height="28" fill="#1d2a3e" stroke="#2a3045"/><text x="94" y="34" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">120</text>
+          <rect x="112" y="16" width="28" height="28" fill="#232f42" stroke="#2a3045"/><text x="126" y="34" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">180</text>
+          <rect x="144" y="16" width="28" height="28" fill="#0e1620" stroke="#2a3045"/><text x="158" y="34" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">20</text>
+
+          <rect x="16" y="48" width="28" height="28" fill="#0e1620" stroke="#2a3045"/><text x="30" y="66" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">30</text>
+          <rect x="48" y="48" width="28" height="28" fill="#26344a" stroke="#f97316" stroke-width="2"/><text x="62" y="66" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="10">210</text>
+          <rect x="80" y="48" width="28" height="28" fill="#1a2538" stroke="#2a3045"/><text x="94" y="66" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">90</text>
+          <rect x="112" y="48" width="28" height="28" fill="#1c2a3f" stroke="#2a3045"/><text x="126" y="66" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">140</text>
+          <rect x="144" y="48" width="28" height="28" fill="#212e42" stroke="#2a3045"/><text x="158" y="66" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="10">170</text>
+
+          <!-- Arrow pointing to highlighted pixel -->
+          <line x1="220" y1="57" x2="185" y2="57" stroke="#f97316" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <text x="225" y="52" fill="#f97316" font-family="IBM Plex Mono" font-size="9">f(1,1) = 210</text>
+          <text x="225" y="65" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">(row 1, col 1)</text>
+        </g>
+        <!-- Right side explanation -->
+        <rect x="380" y="30" width="250" height="145" rx="6" fill="#1c2130" stroke="#2a3045"/>
+        <text x="505" y="52" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="10">Image Properties</text>
+        <text x="390" y="72" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">Size: M × N pixels</text>
+        <text x="390" y="90" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">Pixel = Picture Element</text>
+        <text x="390" y="108" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">Bit depth: k bits → L=2ᵏ levels</text>
+        <text x="390" y="126" fill="#fbbf24" font-family="IBM Plex Mono" font-size="9">8-bit: 0–255 (256 levels)</text>
+        <text x="390" y="144" fill="#fbbf24" font-family="IBM Plex Mono" font-size="9">Total pixels: M × N</text>
+        <text x="390" y="162" fill="#fbbf24" font-family="IBM Plex Mono" font-size="9">Total bits: M × N × k</text>
+      </svg>
+      <div class="diagram-cap">Fig 2.1 — A digital image is a 2D matrix of pixel values. f(x,y) = intensity at row x, column y.</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Key Parameters of a Digital Image</h3>
+
+    <h4>1. Spatial Resolution (Image Size)</h4>
+    <p>The number of pixels per unit area. Common resolutions: 640×480 (VGA), 1920×1080 (Full HD), 4096×2160 (4K).</p>
+    <div class="formula-box">
+      <span class="label">Resolution & Storage</span>
+      <div class="formula">Total pixels = M × N</div>
+      <div class="formula" style="margin-top:6px">Storage (grayscale) = M × N × k  bits</div>
+      <div class="formula" style="margin-top:6px">Storage (color RGB) = M × N × 3k  bits</div>
+      <div class="note">Example: 1024×1024 8-bit grayscale = 1024 × 1024 × 8 = 8,388,608 bits = 1 MB</div>
+    </div>
+
+    <h4>2. Gray-Level Resolution (Bit Depth)</h4>
+    <p>The number of bits used to represent the intensity at each pixel. Determines how many distinct gray levels exist.</p>
+    <table class="comp-table">
+      <tr><th>Bit Depth (k)</th><th>Gray Levels (L = 2ᵏ)</th><th>Application</th></tr>
+      <tr><td>1 bit</td><td>2 (binary)</td><td>Text, fax, binary segmentation</td></tr>
+      <tr><td>2 bits</td><td>4</td><td>Very coarse (used in old displays)</td></tr>
+      <tr><td>4 bits</td><td>16</td><td>Thumbnail, icon-level</td></tr>
+      <tr><td>8 bits</td><td>256</td><td>Standard grayscale (most common)</td></tr>
+      <tr><td>12 bits</td><td>4096</td><td>Medical imaging (CT, MRI)</td></tr>
+      <tr><td>16 bits</td><td>65536</td><td>Professional photography, astronomy</td></tr>
+      <tr><td>24 bits (3×8)</td><td>16.7M colors</td><td>True color RGB image</td></tr>
+    </table>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">🧠</div>
+      <div class="tip-content">
+        <div class="tip-title">Memory Formula — "M × N × k"</div>
+        <p>Always remember: <strong>Storage = M × N × k bits</strong>. Converting to bytes: divide by 8. To KB: divide by 8192. To MB: divide by 8,388,608.<br>
+        For 8-bit 1024×1024: = 1024×1024×8 = 8,388,608 bits = 1,048,576 bytes = 1 MB. This number appears often in RTU questions about storage requirements!</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Pixel Relationships (Important for Segmentation in Unit 6)</h3>
+
+    <h4>Connectivity</h4>
+    <p>Two pixels p and q are:</p>
+    <ul>
+      <li><strong>4-connected:</strong> If they are horizontal or vertical neighbors (up, down, left, right). The 4 direct neighbors form the <em>N₄(p)</em> neighborhood.</li>
+      <li><strong>8-connected:</strong> If they include diagonal neighbors too. The 8 neighbors form the <em>N₈(p)</em> neighborhood.</li>
+      <li><strong>D-neighbors (diagonal):</strong> Only the 4 diagonal pixels: NE, NW, SE, SW.</li>
+    </ul>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 560 130" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="280" y="18" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="11">Pixel Neighborhoods</text>
+        <!-- 4-connectivity -->
+        <text x="90" y="40" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="10">4-Connectivity N₄(p)</text>
+        <rect x="58" y="50" width="28" height="28" fill="#1c2130" stroke="#2a3045"/><text x="72" y="68" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">·</text>
+        <rect x="86" y="50" width="28" height="28" fill="#f9731640" stroke="#f97316" stroke-width="2"/><text x="100" y="68" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">↑</text>
+        <rect x="114" y="50" width="28" height="28" fill="#1c2130" stroke="#2a3045"/><text x="128" y="68" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">·</text>
+        <rect x="58" y="78" width="28" height="28" fill="#f9731640" stroke="#f97316" stroke-width="2"/><text x="72" y="96" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">←</text>
+        <rect x="86" y="78" width="28" height="28" fill="#f97316" stroke="#f97316" stroke-width="2"/><text x="100" y="96" text-anchor="middle" fill="#000" font-family="IBM Plex Mono" font-size="9">p</text>
+        <rect x="114" y="78" width="28" height="28" fill="#f9731640" stroke="#f97316" stroke-width="2"/><text x="128" y="96" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">→</text>
+        <rect x="58" y="106" width="28" height="28" fill="#1c2130" stroke="#2a3045"/><text x="72" y="124" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">·</text>
+        <rect x="86" y="106" width="28" height="28" fill="#f9731640" stroke="#f97316" stroke-width="2"/><text x="100" y="124" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">↓</text>
+        <rect x="114" y="106" width="28" height="28" fill="#1c2130" stroke="#2a3045"/><text x="128" y="124" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="9">·</text>
+        <text x="90" y="148" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">4 neighbors (no diagonals)</text>
+
+        <!-- 8-connectivity -->
+        <text x="290" y="40" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="10">8-Connectivity N₈(p)</text>
+        <rect x="258" y="50" width="28" height="28" fill="#34d39940" stroke="#34d399" stroke-width="2"/><text x="272" y="68" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">↖</text>
+        <rect x="286" y="50" width="28" height="28" fill="#34d39940" stroke="#34d399" stroke-width="2"/><text x="300" y="68" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">↑</text>
+        <rect x="314" y="50" width="28" height="28" fill="#34d39940" stroke="#34d399" stroke-width="2"/><text x="328" y="68" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">↗</text>
+        <rect x="258" y="78" width="28" height="28" fill="#34d39940" stroke="#34d399" stroke-width="2"/><text x="272" y="96" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">←</text>
+        <rect x="286" y="78" width="28" height="28" fill="#34d399" stroke="#34d399" stroke-width="2"/><text x="300" y="96" text-anchor="middle" fill="#000" font-family="IBM Plex Mono" font-size="9">p</text>
+        <rect x="314" y="78" width="28" height="28" fill="#34d39940" stroke="#34d399" stroke-width="2"/><text x="328" y="96" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">→</text>
+        <rect x="258" y="106" width="28" height="28" fill="#34d39940" stroke="#34d399" stroke-width="2"/><text x="272" y="124" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">↙</text>
+        <rect x="286" y="106" width="28" height="28" fill="#34d39940" stroke="#34d399" stroke-width="2"/><text x="300" y="124" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">↓</text>
+        <rect x="314" y="106" width="28" height="28" fill="#34d39940" stroke="#34d399" stroke-width="2"/><text x="328" y="124" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">↘</text>
+        <text x="290" y="148" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">8 neighbors (includes diagonals)</text>
+
+        <!-- Distance -->
+        <rect x="400" y="40" width="150" height="80" rx="6" fill="#1c2130" stroke="#2a3045"/>
+        <text x="475" y="60" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="10">Distance Metrics</text>
+        <text x="410" y="78" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">Euclidean: √((x₁-x₂)²+(y₁-y₂)²)</text>
+        <text x="410" y="94" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">D4 (City-block): |x₁-x₂|+|y₁-y₂|</text>
+        <text x="410" y="110" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">D8 (Chessboard): max(|Δx|,|Δy|)</text>
+      </svg>
+      <div class="diagram-cap">Fig 2.2 — 4-connectivity (direct neighbors) vs 8-connectivity (includes diagonals)</div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Digital Image Representation</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. How are color images represented digitally?</div>
+      <div class="pyq-meta">2024 · Part A Q2 · 2 marks</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div style="font-size:14px;line-height:1.8">
+          <strong>Digital Representation of Color Images:</strong><br><br>
+          A color image is represented as a stack of three 2D matrices (channels), one for each primary color component. The most common model is <strong>RGB (Red, Green, Blue)</strong>.<br><br>
+          For a 24-bit true-color image of size M×N:<br>
+          • Each channel = M×N matrix of 8-bit values (0–255)<br>
+          • Total: 3 × M × N × 8 bits<br>
+          • Example: 512×512 color image = 3 × 512 × 512 × 8 = 6,291,456 bits = 768 KB<br><br>
+          Color pixel at (x,y) = (R(x,y), G(x,y), B(x,y))<br>
+          Total colors possible: 256³ = 16,777,216 ≈ 16.7 million colors<br><br>
+          <strong>Other representations:</strong><br>
+          • HSI: Hue-Saturation-Intensity — separates color from brightness<br>
+          • CMY: Cyan-Magenta-Yellow — for printing (subtractive model)<br>
+          • YCbCr: Luminance + chrominance — used in JPEG and video compression
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ SAMPLING & QUANTIZATION ══════════════════════════════════ -->
+<section class="section" id="sampling">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2 class="section-title">Sampling &amp; Quantization</h2>
+    <span class="importance-pill badge badge-red">🔥 90% · Part A/B with Numerical</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>From Continuous to Digital — The Two-Step Process</h3>
+    <p>A real-world scene produces a <strong>continuous image</strong> — it has infinite spatial detail (every position has a value) and infinite intensity precision. To store it in a computer, we must convert it to a <strong>digital image</strong> through two steps:</p>
+    <ol>
+      <li><span class="highlight">Sampling</span> — Discretizing the <em>spatial</em> coordinates (x, y). Determines M×N (resolution).</li>
+      <li><span class="highlight">Quantization</span> — Discretizing the <em>intensity</em> values f. Determines number of gray levels L = 2ᵏ.</li>
+    </ol>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 680 180" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="340" y="18" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="11">Sampling & Quantization Pipeline</text>
+        <!-- Continuous scene -->
+        <rect x="10" y="35" width="90" height="80" rx="5" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="55" y="58" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="9">SCENE</text>
+        <text x="55" y="74" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="9">Continuous</text>
+        <text x="55" y="88" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">f(x,y): infinite</text>
+        <text x="55" y="100" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">resolution</text>
+        <!-- Arrow + Sensor -->
+        <polygon points="105,75 120,68 120,82" fill="#f97316"/>
+        <rect x="124" y="45" width="100" height="60" rx="5" fill="#1c2130" stroke="#f97316" stroke-width="1.5"/>
+        <text x="174" y="68" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">SAMPLING</text>
+        <text x="174" y="84" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">Spatial discretize</text>
+        <text x="174" y="97" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Grid: M×N pixels</text>
+        <!-- Arrow -->
+        <polygon points="228,75 245,68 245,82" fill="#f97316"/>
+        <!-- Quantization -->
+        <rect x="249" y="45" width="110" height="60" rx="5" fill="#1c2130" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="304" y="68" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="9">QUANTIZATION</text>
+        <text x="304" y="84" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">Intensity discretize</text>
+        <text x="304" y="97" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">L = 2ᵏ levels</text>
+        <!-- Arrow -->
+        <polygon points="363,75 380,68 380,82" fill="#34d399"/>
+        <!-- Digital image -->
+        <rect x="384" y="35" width="90" height="80" rx="5" fill="#1c2130" stroke="#34d399" stroke-width="1.5"/>
+        <text x="429" y="58" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">DIGITAL</text>
+        <text x="429" y="72" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">IMAGE</text>
+        <text x="429" y="88" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">M×N pixels</text>
+        <text x="429" y="102" text-anchor="middle" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">k bits each</text>
+        <!-- Bottom labels -->
+        <text x="55" y="130" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Real world</text>
+        <text x="174" y="120" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="8">↓ More M,N</text>
+        <text x="174" y="130" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="8">= sharper image</text>
+        <text x="304" y="120" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="8">↑ More k</text>
+        <text x="304" y="130" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="8">= smoother tones</text>
+        <text x="429" y="130" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="8">Stored image</text>
+        <!-- Note on right -->
+        <rect x="490" y="35" width="185" height="80" rx="5" fill="#f9731612" stroke="#f9731640" stroke-width="1"/>
+        <text x="582" y="55" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">Storage formula:</text>
+        <text x="582" y="72" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="9">b = M × N × k bits</text>
+        <text x="582" y="88" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">M,N = resolution</text>
+        <text x="582" y="102" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">k = bits per pixel</text>
+      </svg>
+      <div class="diagram-cap">Fig 3.1 — Continuous scene → Sampling (spatial grid) → Quantization (intensity levels) → Digital image</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ Sampling — Spatial Discretization</h3>
+    <p>Sampling takes a continuous image f(x,y) and measures its value at a discrete set of points on a regular grid. The denser the grid (more samples), the more detail is captured.</p>
+
+    <div class="formula-box">
+      <span class="label">Nyquist-Shannon Sampling Theorem</span>
+      <div class="formula">f_s ≥ 2 · f_max</div>
+      <div class="note">f_s = sampling frequency, f_max = highest spatial frequency in image.</div>
+      <div class="note">If f_s < 2·f_max → ALIASING occurs (high frequency content appears as low frequency — artifacts!)</div>
+      <div class="note">To avoid aliasing: either increase f_s (sample more densely) or pre-filter (remove high freq before sampling).</div>
+    </div>
+
+    <h4>Effect of Reducing Sampling Rate</h4>
+    <p>If you take an M×N image and reduce to M/2 × N/2, you lose spatial detail. Objects appear blocky — this is called <span class="highlight">pixelization</span>.</p>
+
+    <div class="example-box">
+      <div class="example-label">📌 Sampling Calculation Example</div>
+      <p>An image captures a scene at 512×512 pixels. Required storage = 512×512×8 = 2,097,152 bits = 256 KB.</p>
+      <p>If we reduce to 256×256 (half the sampling rate): 256×256×8 = 524,288 bits = 64 KB. (4× size reduction)</p>
+      <p>But spatial resolution is halved → fine details like thin lines disappear → pixelization visible at edges.</p>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ Quantization — Intensity Discretization</h3>
+    <p>Quantization maps the continuous intensity range [0, f_max] to a finite set of L = 2ᵏ discrete levels. Each pixel gets assigned to the nearest level.</p>
+
+    <div class="formula-box">
+      <span class="label">Uniform Quantization Step Size</span>
+      <div class="formula">Δ = f_max / (L - 1) = f_max / (2ᵏ - 1)</div>
+      <div class="note">Each level covers a range of Δ. Intensity values within Δ/2 of a level all map to that level.</div>
+      <div class="note">Quantization error (noise) = f(x,y) − quantized value. Maximum error = ±Δ/2.</div>
+    </div>
+
+    <h4>Effect of Reducing Bit Depth</h4>
+    <p>Reducing the number of bits from k to fewer bits reduces the number of gray levels. With very few levels, smooth gradients appear as sudden jumps. This artifact is called <span class="highlight">false contouring</span> (or quantization contouring).</p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 640 170" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="320" y="18" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="11">Effect of Bit Depth on Image Quality</text>
+        <!-- 8-bit -->
+        <rect x="10" y="30" width="100" height="100" rx="4" fill="#1c2130" stroke="#34d399" stroke-width="1.5"/>
+        <defs>
+          <linearGradient id="g8" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#000"/>
+            <stop offset="100%" stop-color="#fff"/>
+          </linearGradient>
+        </defs>
+        <rect x="15" y="40" width="90" height="50" fill="url(#g8)" rx="2"/>
+        <text x="60" y="105" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">8-bit (256 levels)</text>
+        <text x="60" y="118" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Smooth gradient ✓</text>
+        <!-- 4-bit -->
+        <rect x="125" y="30" width="100" height="100" rx="4" fill="#1c2130" stroke="#fbbf24" stroke-width="1.5"/>
+        <rect x="130" y="40" width="11" height="50" fill="#000"/>
+        <rect x="141" y="40" width="11" height="50" fill="#111"/>
+        <rect x="152" y="40" width="11" height="50" fill="#222"/>
+        <rect x="163" y="40" width="11" height="50" fill="#444"/>
+        <rect x="174" y="40" width="11" height="50" fill="#666"/>
+        <rect x="185" y="40" width="11" height="50" fill="#888"/>
+        <rect x="196" y="40" width="11" height="50" fill="#aaa"/>
+        <rect x="207" y="40" width="11" height="50" fill="#fff"/>
+        <text x="175" y="105" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="9">4-bit (16 levels)</text>
+        <text x="175" y="118" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Visible bands</text>
+        <!-- 2-bit -->
+        <rect x="240" y="30" width="100" height="100" rx="4" fill="#1c2130" stroke="#f04a7a" stroke-width="1.5"/>
+        <rect x="245" y="40" width="22" height="50" fill="#000"/>
+        <rect x="267" y="40" width="22" height="50" fill="#555"/>
+        <rect x="289" y="40" width="22" height="50" fill="#aaa"/>
+        <rect x="311" y="40" width="22" height="50" fill="#fff"/>
+        <text x="290" y="105" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="9">2-bit (4 levels)</text>
+        <text x="290" y="118" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">False contouring!</text>
+        <!-- 1-bit -->
+        <rect x="355" y="30" width="100" height="100" rx="4" fill="#1c2130" stroke="#f97316" stroke-width="1.5"/>
+        <rect x="360" y="40" width="45" height="50" fill="#000"/>
+        <rect x="405" y="40" width="44" height="50" fill="#fff"/>
+        <text x="405" y="105" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">1-bit (2 levels)</text>
+        <text x="405" y="118" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Binary only</text>
+        <!-- Annotations -->
+        <rect x="470" y="30" width="165" height="100" rx="5" fill="#1c2130" stroke="#2a3045"/>
+        <text x="552" y="50" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">False Contouring:</text>
+        <text x="480" y="67" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">Occurs when bit depth</text>
+        <text x="480" y="82" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">is too low. Smooth tonal</text>
+        <text x="480" y="97" fill="#e8eaf2" font-family="IBM Plex Mono" font-size="8">gradients get replaced</text>
+        <text x="480" y="112" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">by sudden jumps → fake edges</text>
+      </svg>
+      <div class="diagram-cap">Fig 3.2 — Effect of bit depth on image quality. Less bits → false contouring artifact.</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐ Storage vs Quality — The Trade-off Table</h3>
+    <table class="comp-table">
+      <tr><th>Change</th><th>Effect on Image</th><th>Effect on Storage</th><th>Artifact if too extreme</th></tr>
+      <tr><td>↑ M, N (more samples)</td><td>More spatial detail, sharper</td><td>↑ Storage</td><td>No artifact (more is better)</td></tr>
+      <tr><td>↓ M, N (fewer samples)</td><td>Loss of fine details, blocky</td><td>↓ Storage</td><td><strong>Pixelization</strong>, Aliasing</td></tr>
+      <tr><td>↑ k (more bits)</td><td>Smoother tonal gradients</td><td>↑ Storage</td><td>No artifact</td></tr>
+      <tr><td>↓ k (fewer bits)</td><td>Fewer gray levels, steps visible</td><td>↓ Storage</td><td><strong>False Contouring</strong></td></tr>
+    </table>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">💡</div>
+      <div class="tip-content">
+        <div class="tip-title">2-Mark Question Shortcut</div>
+        <p>"What happens when you reduce sampling rate?" → <strong>Pixelization</strong> (blocky appearance, loss of spatial detail, aliasing)<br>
+        "What happens when you reduce bit depth?" → <strong>False contouring</strong> (smooth gradients show as sudden jumps, fake edge appearance)<br>
+        Always state the cause AND the visual artifact — gives full 2 marks.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>RTU PYQ Numerical — Sampling & Quantization Effects</h3>
+    <div class="example-box">
+      <div class="example-label">📌 2024 Part B Q1 — Sampling and Quantization Operations on Image</div>
+      <p><strong>Q: Explain what you would expect the result of Sampling and Quantization operations on image.</strong></p>
+      <br>
+      <p><strong>Sampling Operation — Effects:</strong></p>
+      <p>Consider a continuous image of a circle on a grid. At high sampling rate (512×512), the circle appears smooth. At lower rates:</p>
+      <pre>
+512×512 (high): Circle edge smooth, fine details visible
+256×256 (medium): Some smoothing at edges
+128×128 (low): Staircase effect visible at curved edges
+ 64×64 (very low): Object shape barely recognizable
+ 32×32 (extreme): Heavy pixelization, object looks blocky
+</pre>
+      <p>→ <strong>Pixelization artifact</strong>: Individual pixels become visible as blocks. Curved edges appear jagged (staircase effect). Fine details (thin lines, text) disappear.</p>
+      <br>
+      <p><strong>Quantization Operation — Effects:</strong></p>
+      <pre>
+256 gray levels (8-bit): Smooth tonal transitions in gradients
+ 64 gray levels (6-bit): Near-smooth, slight banding
+ 16 gray levels (4-bit): Visible banding in smooth regions
+  8 gray levels (3-bit): Prominent bands (false contours)
+  4 gray levels (2-bit): Strong false contouring
+  2 gray levels (1-bit): Binary image, all detail lost
+</pre>
+      <p>→ <strong>False contouring artifact</strong>: In areas with smooth gradients (skin, sky, smooth surfaces), abrupt intensity jumps create artificial-looking contour lines. More prominent in smooth, low-texture regions.</p>
+      <br>
+      <p><strong>Key Rule:</strong> For typical images, reducing M,N affects spatial detail before intensity artifacts appear. Reducing k below ~4 bits causes noticeable false contouring. The human eye requires approximately 50–100 gray levels to perceive smooth gradients — below 6 bits (64 levels) is where false contouring becomes perceptible.</p>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Sampling & Quantization</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Define pixelization and false contouring effect in images.</div>
+      <div class="pyq-meta">June 2023 · Part A Q1 · 2 marks ⭐ Direct definition question</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div style="font-size:14px;line-height:1.8">
+          <strong>Pixelization:</strong><br>
+          Pixelization is the visual artifact that occurs when the sampling rate of an image is too low (too few pixels). When a low-resolution digital image is displayed at large size, individual square pixels become visible, making the image appear blocky or "mosaic-like." Curved edges and fine details appear as staircase-shaped (jagged) patterns.<br>
+          <em>Cause:</em> Insufficient spatial sampling. Each pixel covers a large area of the original scene.<br>
+          <em>Example:</em> Zooming in on a low-resolution photo — the image becomes a grid of colored squares.<br><br>
+
+          <strong>False Contouring Effect:</strong><br>
+          False contouring (quantization contouring) is the visual artifact that occurs when the number of quantization levels (bit depth) is too low. In image regions with slowly varying intensity (smooth gradients like sky, skin, walls), insufficient gray levels create abrupt, band-like transitions — resembling topographic contour lines that don't actually exist in the original scene.<br>
+          <em>Cause:</em> Insufficient gray-level quantization. Smooth intensity gradients get "rounded" to the nearest available level, creating artificial steps.<br>
+          <em>Example:</em> An 8-bit (256-level) image reduced to 3-bit (8 levels) — smooth skin tones show visible stripes.
+        </div>
+      </div>
+    </div>
+
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain what you would expect the result of Sampling and Quantization operations on image.</div>
+      <div class="pyq-meta">2024 · Part B Q1 · 4 marks ⭐ Full answer in theory section above</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div style="font-size:14px;line-height:1.8">
+          <strong>Full answer provided in the RTU Numerical box in the theory section above.</strong><br><br>
+          Summary:<br>
+          • <strong>Sampling reduces M×N:</strong> Loss of spatial resolution → pixelization (blocky appearance), staircase at curved edges, aliasing of high-frequency details. The Nyquist theorem states sampling frequency must be ≥ 2 × max spatial frequency.<br><br>
+          • <strong>Quantization reduces k (bits):</strong> Loss of gray-level resolution → false contouring in smooth gradient regions, fewer tonal distinctions. Below about 50 gray levels, human eye perceives false contours.<br><br>
+          Both operations are necessary to digitize a continuous image, but their over-reduction causes specific visible artifacts. The goal is to choose M, N and k values that are sufficient for the application while minimizing storage cost.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ IMAGE ACQUISITION ══════════════════════════════════ -->
+<section class="section" id="acquisition">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2 class="section-title">Image Acquisition</h2>
+    <span class="importance-pill badge badge-red">80% · Part B with Diagram</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>What is Image Acquisition?</h3>
+    <p>Image acquisition is the process of capturing a physical scene and converting it into a digital image. It involves an <strong>illumination source</strong>, an <strong>object/scene</strong>, and an <strong>imaging sensor</strong> (camera).</p>
+    <p>Energy from the illumination source hits the object, reflects off it, and is captured by the sensor. The sensor converts the energy into an electrical signal which is then digitized.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>Image Acquisition System — Block Diagram (Draw this every time!)</h3>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 680 200" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="340" y="18" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="11">Image Acquisition System</text>
+
+        <!-- Illumination -->
+        <rect x="10" y="50" width="90" height="70" rx="5" fill="#1c2130" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="55" y="78" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="9">ILLUMIN-</text>
+        <text x="55" y="92" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="9">ATION</text>
+        <text x="55" y="108" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">Light/energy</text>
+        <text x="55" y="135" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="8">source</text>
+        <!-- Energy arrow down to scene -->
+        <polygon points="55,124 48,140 62,140" fill="#fbbf24"/>
+        <!-- Scene/Object -->
+        <rect x="10" y="145" width="90" height="45" rx="5" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="55" y="165" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="9">SCENE /</text>
+        <text x="55" y="179" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="9">OBJECT</text>
+        <!-- Reflected energy -->
+        <polygon points="105,168 125,160 125,176" fill="#f97316"/>
+        <text x="115" y="152" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="8">Reflected</text>
+        <text x="115" y="162" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="8">energy</text>
+        <!-- Lens/Optics -->
+        <rect x="129" y="140" width="90" height="55" rx="5" fill="#1c2130" stroke="#f97316" stroke-width="1.5"/>
+        <text x="174" y="165" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">LENS /</text>
+        <text x="174" y="179" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">OPTICS</text>
+        <!-- Arrow -->
+        <polygon points="223,168 240,161 240,175" fill="#f97316"/>
+        <!-- Sensor -->
+        <rect x="244" y="140" width="100" height="55" rx="5" fill="#1c2130" stroke="#34d399" stroke-width="1.5"/>
+        <text x="294" y="162" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">IMAGE</text>
+        <text x="294" y="176" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="9">SENSOR</text>
+        <text x="294" y="188" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">CCD / CMOS</text>
+        <!-- Arrow -->
+        <polygon points="348,168 365,161 365,175" fill="#34d399"/>
+        <!-- A/D -->
+        <rect x="369" y="140" width="80" height="55" rx="5" fill="#1c2130" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="409" y="162" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="9">A/D</text>
+        <text x="409" y="176" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="9">CONV.</text>
+        <text x="409" y="188" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">Sampling+Quant</text>
+        <!-- Arrow -->
+        <polygon points="453,168 470,161 470,175" fill="#f97316"/>
+        <!-- Digital output -->
+        <rect x="474" y="130" width="100" height="65" rx="5" fill="#1c2130" stroke="#f97316" stroke-width="1.5"/>
+        <text x="524" y="155" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">DIGITAL</text>
+        <text x="524" y="169" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="9">IMAGE</text>
+        <text x="524" y="183" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">f(x,y) stored</text>
+        <!-- Processing block -->
+        <rect x="590" y="50" width="85" height="145" rx="5" fill="#f9731612" stroke="#f9731640" stroke-width="1"/>
+        <text x="632" y="80" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="8">IMAGE</text>
+        <text x="632" y="94" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="8">PROCESSING</text>
+        <text x="632" y="115" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">Enhancement</text>
+        <text x="632" y="128" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">Restoration</text>
+        <text x="632" y="141" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">Compression</text>
+        <text x="632" y="154" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">Segmentation</text>
+        <polygon points="580,168 590,161 590,175" fill="#f97316"/>
+      </svg>
+      <div class="diagram-cap">Fig 4.1 — Image acquisition system: Illumination → Object → Lens → Sensor → A/D Converter → Digital Image → Processing</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>Types of Imaging Sensors</h3>
+
+    <h4>1. Single Sensor (Line Sensor)</h4>
+    <p>A single photodetector. To acquire a 2D image, the sensor must be <strong>physically scanned</strong> across the scene (mechanically moved row by row). Very slow but high precision. Used in: flatbed scanners, high-precision industrial cameras.</p>
+
+    <h4>2. Line Sensor (1D Array)</h4>
+    <p>A 1D row of photodetectors. The sensor captures one row of the image at a time. The scene or sensor moves perpendicular to the sensor to capture the full image. Used in: document scanners, fax machines, conveyor-belt inspection.</p>
+
+    <h4>3. Array Sensor (2D Array) — Most Common</h4>
+    <p>A 2D grid (matrix) of photodetectors that captures the entire image simultaneously. Two main technologies:</p>
+    <ul>
+      <li><strong>CCD (Charge-Coupled Device):</strong> Better image quality, lower noise. Used in professional cameras, medical imaging, astronomy. Charge transfers sequentially to output.</li>
+      <li><strong>CMOS (Complementary Metal-Oxide-Semiconductor):</strong> Cheaper, faster, lower power. Used in smartphones, webcams, consumer cameras. Each pixel has its own amplifier.</li>
+    </ul>
+
+    <table class="comp-table">
+      <tr><th>Property</th><th>CCD</th><th>CMOS</th></tr>
+      <tr><td>Image quality</td><td>Higher (less noise)</td><td>Good but can have noise</td></tr>
+      <tr><td>Power consumption</td><td>High</td><td>Low</td></tr>
+      <tr><td>Speed (frame rate)</td><td>Lower</td><td>Higher</td></tr>
+      <tr><td>Cost</td><td>Expensive</td><td>Cheaper</td></tr>
+      <tr><td>On-chip processing</td><td>Limited</td><td>Yes (ADC per pixel)</td></tr>
+      <tr><td>Use</td><td>Medical, astronomy, DSLRs</td><td>Phones, webcams, action cams</td></tr>
+    </table>
+  </div>
+
+  <div class="theory-block">
+    <h3>Illumination Sources</h3>
+    <p>The choice of illumination affects the quality and type of image captured:</p>
+    <ul>
+      <li><strong>Visible light:</strong> Standard photography. White light for general imaging.</li>
+      <li><strong>Infrared (IR):</strong> Night vision cameras, thermal imaging, remote sensing. Objects emit IR radiation proportional to temperature.</li>
+      <li><strong>Ultraviolet (UV):</strong> Fluorescence imaging, forensics (detecting substances invisible in visible light).</li>
+      <li><strong>X-rays:</strong> Medical imaging (bone, tissue density). Objects attenuate X-rays differently based on density.</li>
+      <li><strong>Gamma rays:</strong> Nuclear medicine (PET scans). Very high energy.</li>
+      <li><strong>Radar (microwave):</strong> Satellite SAR imaging, weather radar. Penetrates clouds.</li>
+      <li><strong>Ultrasound:</strong> Medical ultrasound. Sound waves, not electromagnetic.</li>
+    </ul>
+
+    <div class="tip-box connect">
+      <div class="tip-icon">🔗</div>
+      <div class="tip-content">
+        <div class="tip-title">Connection: Acquisition → Unit 4 (Noise)</div>
+        <p>Different sensors introduce different noise types. CCD sensors in low light produce <strong>Gaussian noise</strong> (thermal electron fluctuations). Faulty CMOS pixels produce <strong>Salt & Pepper noise</strong> (stuck pixels). Understanding acquisition helps explain why specific noise models (Unit 4) are used for specific imaging situations.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Image Acquisition</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain Image sensing and acquisition with suitable diagram.</div>
+      <div class="pyq-meta">June 2022 · Part B Q1 · 10 marks ⭐ Draw the full block diagram!</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div style="font-size:14px;line-height:1.8">
+          <strong>Image Sensing and Acquisition:</strong><br><br>
+          Image acquisition is the process of capturing a scene as a digital image. The acquisition process involves the following components:<br><br>
+
+          [Draw block diagram: Illumination → Scene → Lens/Optics → Image Sensor (CCD/CMOS) → A/D Converter → Digital Image f(x,y)]<br><br>
+
+          <strong>1. Illumination Source:</strong><br>
+          Energy (visible, IR, UV, X-ray, radar) illuminates the scene. The type of illumination determines what properties of objects are captured. Uniform, controlled illumination reduces artifacts.<br><br>
+
+          <strong>2. Optical System (Lens):</strong><br>
+          Focuses reflected/emitted energy from the scene onto the sensor plane. Determines field of view and magnification. Problems: aberration, distortion, defocus blur.<br><br>
+
+          <strong>3. Image Sensor:</strong><br>
+          Converts optical energy (photons) into electrical signals. Two main types:<br>
+          • CCD: Sequential charge transfer, high quality, low noise, used in medical/scientific imaging<br>
+          • CMOS: Per-pixel amplification, faster, cheaper, lower power, used in smartphones<br><br>
+          Three configurations:<br>
+          a) Single sensor: scanned mechanically over scene<br>
+          b) Line sensor (1D array): one row captured at a time<br>
+          c) Area sensor (2D array): full image captured simultaneously — most common<br><br>
+
+          <strong>4. A/D Converter:</strong><br>
+          Converts analog electrical signal from sensor to digital values.<br>
+          • Sampling: measures signal at discrete spatial points → creates M×N grid<br>
+          • Quantization: maps continuous intensity to discrete levels L = 2ᵏ<br>
+          • Output: digital image f(x,y) stored as M×N matrix<br><br>
+
+          <strong>5. Image Processing System:</strong><br>
+          The digital image is then processed for various applications — enhancement (Unit 3), restoration (Unit 4), compression (Unit 5), segmentation (Unit 6).<br><br>
+
+          <strong>Key parameters:</strong><br>
+          • Spatial resolution: determined by sensor pixel count and optical system<br>
+          • Gray-level resolution: determined by A/D converter bit depth<br>
+          • Temporal resolution (video): determined by frame rate<br>
+          • SNR: signal-to-noise ratio — higher is better quality
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ STEPS IN DIP ══════════════════════════════════ -->
+<section class="section" id="steps">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2 class="section-title">Steps in Digital Image Processing</h2>
+    <span class="importance-pill badge badge-yellow">70% · Conceptual</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>The DIP Pipeline</h3>
+    <p>A complete digital image processing system follows these fundamental steps from image input to final output:</p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 680 120" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="340" y="16" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="10">Fundamental Steps in Digital Image Processing</text>
+        <!-- Step boxes -->
+        <rect x="5" y="28" width="78" height="55" rx="4" fill="#1c2130" stroke="#f97316" stroke-width="1.5"/>
+        <text x="44" y="49" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="8">Image</text>
+        <text x="44" y="62" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="8">Acquisition</text>
+        <text x="44" y="93" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">Unit 2</text>
+        <polygon points="86,55 98,49 98,61" fill="#f97316"/>
+
+        <rect x="101" y="28" width="70" height="55" rx="4" fill="#1c2130" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="136" y="49" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="8">Image</text>
+        <text x="136" y="62" text-anchor="middle" fill="#fbbf24" font-family="IBM Plex Mono" font-size="8">Enhancement</text>
+        <text x="136" y="93" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">Unit 3</text>
+        <polygon points="174,55 186,49 186,61" fill="#f97316"/>
+
+        <rect x="189" y="28" width="70" height="55" rx="4" fill="#1c2130" stroke="#c44af0" stroke-width="1.5"/>
+        <text x="224" y="49" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="8">Image</text>
+        <text x="224" y="62" text-anchor="middle" fill="#c44af0" font-family="IBM Plex Mono" font-size="8">Restoration</text>
+        <text x="224" y="93" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">Unit 4</text>
+        <polygon points="262,55 274,49 274,61" fill="#f97316"/>
+
+        <rect x="277" y="28" width="70" height="55" rx="4" fill="#1c2130" stroke="#4a9af0" stroke-width="1.5"/>
+        <text x="312" y="49" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="8">Color</text>
+        <text x="312" y="62" text-anchor="middle" fill="#4a9af0" font-family="IBM Plex Mono" font-size="8">Processing</text>
+        <text x="312" y="93" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">Unit 3</text>
+        <polygon points="350,55 362,49 362,61" fill="#f97316"/>
+
+        <rect x="365" y="28" width="70" height="55" rx="4" fill="#1c2130" stroke="#34d399" stroke-width="1.5"/>
+        <text x="400" y="49" text-anchor="middle" fill="#34d399" font-family="IBM Plex Mono" font-size="8">Compression</text>
+        <text x="400" y="93" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">Unit 5</text>
+        <polygon points="438,55 450,49 450,61" fill="#f97316"/>
+
+        <rect x="453" y="28" width="70" height="55" rx="4" fill="#1c2130" stroke="#f04a7a" stroke-width="1.5"/>
+        <text x="488" y="49" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">Segmenta-</text>
+        <text x="488" y="62" text-anchor="middle" fill="#f04a7a" font-family="IBM Plex Mono" font-size="8">tion</text>
+        <text x="488" y="93" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">Unit 6</text>
+        <polygon points="526,55 538,49 538,61" fill="#f97316"/>
+
+        <rect x="541" y="28" width="70" height="55" rx="4" fill="#1c2130" stroke="#f97316" stroke-width="1.5"/>
+        <text x="576" y="49" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="8">Recognition</text>
+        <text x="576" y="62" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="8">& Output</text>
+        <text x="576" y="93" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">High-level</text>
+
+        <!-- Knowledge base -->
+        <text x="340" y="112" text-anchor="middle" fill="#8892a8" font-family="IBM Plex Mono" font-size="7">← All steps access a shared Knowledge Base (domain knowledge about image type, expected output) →</text>
+      </svg>
+      <div class="diagram-cap">Fig 5.1 — Complete DIP pipeline. Not all steps are needed in every application.</div>
+    </div>
+
+    <div class="steps">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Image Acquisition:</strong> Capturing the image using sensors. Includes sampling and quantization. (Unit 2)</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Image Enhancement:</strong> Improving visual appearance — contrast, brightness, sharpness. No mathematical model of degradation. (Unit 3)</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>Image Restoration:</strong> Removing known degradations (blur, noise) using mathematical models. Objective process. (Unit 4)</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text"><strong>Color Image Processing:</strong> Processing color channels (RGB, HSI, CMY). Pseudo-coloring, color transforms. (Unit 3)</div></div>
+      <div class="step-item"><div class="step-num">5</div><div class="step-text"><strong>Wavelets & Multiresolution:</strong> Multi-scale image analysis for compression and feature extraction. (Unit 3)</div></div>
+      <div class="step-item"><div class="step-num">6</div><div class="step-text"><strong>Compression:</strong> Reducing storage/bandwidth — Huffman, JPEG, LZW. Exploiting redundancy. (Unit 5)</div></div>
+      <div class="step-item"><div class="step-num">7</div><div class="step-text"><strong>Morphological Processing:</strong> Shape-based operations — erosion, dilation, opening, closing for binary images.</div></div>
+      <div class="step-item"><div class="step-num">8</div><div class="step-text"><strong>Segmentation:</strong> Partitioning image into meaningful regions (edge detection, thresholding, region growing). (Unit 6)</div></div>
+      <div class="step-item"><div class="step-num">9</div><div class="step-text"><strong>Representation & Description:</strong> Chain codes, boundary descriptors, Fourier descriptors for representing segmented regions. (Unit 6)</div></div>
+      <div class="step-item"><div class="step-num">10</div><div class="step-text"><strong>Recognition:</strong> High-level — assigning labels/meanings to detected objects. Machine learning, AI classification.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ COLOR ══════════════════════════════════ -->
+<section class="section" id="color">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2 class="section-title">Color Image Representation</h2>
+    <span class="importance-pill badge badge-red">85% · Part A/B — Links to Unit 3</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Why Color?</h3>
+    <p>Human vision uses three types of cone cells (sensitive to red, green, blue wavelengths). Color images carry significantly more information than grayscale — they enable distinguishing objects with similar gray levels but different colors (e.g., red and green objects look identical in grayscale).</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ RGB Color Model — Primary Additive</h3>
+    <p>The <span class="highlight">RGB model</span> is the most fundamental. Every color is created by <strong>adding</strong> three primary colors — Red, Green, Blue — at varying intensities.</p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 580 180" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <text x="290" y="18" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="11">RGB Additive Color Model — Color Cube</text>
+        <!-- RGB circles (additive mixing) -->
+        <circle cx="130" cy="90" r="50" fill="#ff000040" stroke="#ff6060" stroke-width="1.5"/>
+        <text x="100" y="60" fill="#ff6060" font-family="IBM Plex Mono" font-size="10">R</text>
+        <circle cx="170" cy="90" r="50" fill="#0000ff40" stroke="#6060ff" stroke-width="1.5"/>
+        <text x="200" y="60" fill="#6060ff" font-family="IBM Plex Mono" font-size="10">B</text>
+        <circle cx="150" cy="130" r="50" fill="#00ff0040" stroke="#60ff60" stroke-width="1.5"/>
+        <text x="150" y="170" fill="#60ff60" font-family="IBM Plex Mono" font-size="10" text-anchor="middle">G</text>
+        <!-- Overlap labels -->
+        <text x="150" y="78" text-anchor="middle" fill="#ff80ff" font-family="IBM Plex Mono" font-size="9">Magenta</text>
+        <text x="116" y="125" text-anchor="middle" fill="#ffff40" font-family="IBM Plex Mono" font-size="8">Yellow</text>
+        <text x="185" y="125" text-anchor="middle" fill="#40ffff" font-family="IBM Plex Mono" font-size="8">Cyan</text>
+        <text x="150" y="108" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono" font-size="10">W</text>
+        <!-- Right panel: color table -->
+        <rect x="265" y="30" width="300" height="140" rx="6" fill="#1c2130" stroke="#2a3045"/>
+        <text x="415" y="50" text-anchor="middle" fill="#f97316" font-family="IBM Plex Mono" font-size="10">Primary & Secondary Colors</text>
+        <text x="275" y="70" fill="#ff6060" font-family="IBM Plex Mono" font-size="9">Red:     R=255, G=0,   B=0</text>
+        <text x="275" y="86" fill="#60ff60" font-family="IBM Plex Mono" font-size="9">Green:   R=0,   G=255, B=0</text>
+        <text x="275" y="102" fill="#6060ff" font-family="IBM Plex Mono" font-size="9">Blue:    R=0,   G=0,   B=255</text>
+        <text x="275" y="118" fill="#40ffff" font-family="IBM Plex Mono" font-size="9">Cyan:    R=0,   G=255, B=255</text>
+        <text x="275" y="134" fill="#ff80ff" font-family="IBM Plex Mono" font-size="9">Magenta: R=255, G=0,   B=255</text>
+        <text x="275" y="150" fill="#ffff40" font-family="IBM Plex Mono" font-size="9">Yellow:  R=255, G=255, B=0</text>
+        <text x="275" y="162" fill="#fff" font-family="IBM Plex Mono" font-size="9">White:   R=255, G=255, B=255</text>
+      </svg>
+      <div class="diagram-cap">Fig 6.1 — Additive color mixing: R+G+B overlapping circles. Secondary colors at intersections.</div>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">RGB Image Structure</span>
+      <div class="formula">Color pixel: P(x,y) = [R(x,y), G(x,y), B(x,y)]</div>
+      <div class="formula" style="margin-top:8px">Gray conversion: I = 0.299·R + 0.587·G + 0.114·B  (luminance formula)</div>
+      <div class="note">Green contributes most to perceived brightness (0.587). Blue contributes least (0.114).</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐ CMY / CMYK Model — Subtractive (Printing)</h3>
+    <p>Printing inks <strong>absorb (subtract)</strong> light from white paper. Cyan absorbs Red; Magenta absorbs Green; Yellow absorbs Blue.</p>
+    <div class="formula-box">
+      <span class="label">RGB → CMY Conversion (values in [0,1])</span>
+      <div class="formula">C = 1 − R</div>
+      <div class="formula">M = 1 − G</div>
+      <div class="formula">Y = 1 − B</div>
+      <div class="note">K (black) is added in CMYK for efficiency: K = min(C, M, Y). Reduces ink usage for dark colors.</div>
+      <div class="formula" style="margin-top:8px">C' = (C − K)/(1 − K)  [after adding K]</div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ HSI Model — Human-Perception Based</h3>
+    <p>Separates <strong>color information</strong> (H, S) from <strong>intensity/brightness</strong> (I). Directly used in Unit 3. Covered in full detail there — here is the quick summary:</p>
+    <ul>
+      <li><strong>H (Hue):</strong> The dominant color (0°–360°). Red=0°, Green=120°, Blue=240°.</li>
+      <li><strong>S (Saturation):</strong> Purity of color (0=gray, 1=pure color).</li>
+      <li><strong>I (Intensity):</strong> Brightness (0=black, 1=white). Completely decoupled from color.</li>
+    </ul>
+    <div class="tip-box connect">
+      <div class="tip-icon">🔗</div>
+      <div class="tip-content">
+        <div class="tip-title">Unit 2 → Unit 3: Why HSI is Needed</div>
+        <p>RGB components are correlated with brightness — changing luminosity changes all three R, G, B values together. The HSI model (Unit 3) solves this by separating I (intensity) from H and S (color). This allows operations like histogram equalization to be applied to only the I channel without distorting the color hue and saturation. This is the key motivation taught in Unit 2 that becomes critical in Unit 3.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐ Pseudo-Coloring</h3>
+    <p><span class="highlight">Pseudo-coloring</span> (or false coloring) assigns colors to a grayscale image for visualization purposes — NOT because the original had those colors. Used to make subtle gray-level differences more visible to human eyes, which can distinguish many more colors than gray levels.</p>
+
+    <h4>Methods:</h4>
+    <ul>
+      <li><strong>Intensity Slicing:</strong> Map each gray level range to a specific color. Example: levels 0–50 → blue, 51–100 → green, 101–200 → yellow, 201–255 → red.</li>
+      <li><strong>Pseudo-Color LUT (Lookup Table):</strong> A predefined mapping table that converts each gray value to (R, G, B). Standard LUTs: rainbow, heat map, jet colormap.</li>
+      <li><strong>Frequency Domain Pseudo-Coloring:</strong> Apply different phase shifts to DFT and combine channels — more complex visual encoding.</li>
+    </ul>
+
+    <div class="example-box">
+      <div class="example-label">📌 Pseudo-Coloring Application Example</div>
+      <p><strong>Medical X-ray:</strong> A grayscale X-ray shows bone density from 0–255. Pseudo-coloring maps low density → blue (soft tissue), medium → green (cartilage), high → red/white (dense bone). A doctor can now instantly identify tissue types by color instead of tiny gray differences.</p>
+      <p><strong>Satellite Thermal Imaging:</strong> Temperatures mapped as colors — cold blue → warm orange → hot red. Makes temperature gradients immediately visible.</p>
+    </div>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Color Representation</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Explain following with example: (a) Lookup Table (b) Additive vs. Subtractive color system (c) Hue and Saturation (d) HMMD Color Space</div>
+      <div class="pyq-meta">May 2025 · Part C Q4 · 10 marks ⭐ (also covered in Unit 3)</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div style="font-size:14px;line-height:1.8">
+          <strong>(a) Lookup Table (LUT):</strong><br>
+          A lookup table is a precomputed array that maps each possible input gray level (0–255) to a corresponding output value. Instead of computing a transform function pixel-by-pixel, we compute the entire mapping once and store it. Processing speed = O(1) per pixel (just a memory lookup).<br>
+          <em>Example:</em> Gamma correction with γ=0.5: LUT[r] = 255 × (r/255)^0.5 for r = 0..255. Apply to every pixel: g(x,y) = LUT[f(x,y)].<br>
+          Used in: contrast adjustment, pseudo-coloring, histogram equalization (Unit 3).<br><br>
+
+          <strong>(b) Additive vs. Subtractive Color System:</strong><br>
+          <em>Additive (RGB):</em> Colors formed by adding light. R+G+B = White. Used in displays/monitors/cameras. Starting from black (no light), add colors to brighten.<br>
+          <em>Subtractive (CMY):</em> Colors formed by subtracting/absorbing light from white paper using inks. C+M+Y = Black (all absorbed). Used in color printing. Starting from white (paper), add inks to darken.<br>
+          Relationship: C=1-R, M=1-G, Y=1-B.<br><br>
+
+          <strong>(c) Hue and Saturation:</strong><br>
+          <em>Hue:</em> The perceived dominant color — what makes red different from blue. Measured as an angle (0°–360°) in the HSI color space. Red≈0°, Green≈120°, Blue≈240°.<br>
+          <em>Saturation:</em> The "purity" or "colorfulness" of the hue. S=0 means pure gray (no color). S=1 means fully saturated (vivid color). Example: Pink = Red with low saturation (white mixed in).<br><br>
+
+          <strong>(d) HMMD (Hue-Max-Min-Diff) Color Space:</strong><br>
+          HMMD is derived from RGB: H=Hue, Max=max(R,G,B), Min=min(R,G,B), Diff=Max-Min.<br>
+          Diff is similar to Saturation (chroma). This space is used in MPEG-7 color descriptors for image retrieval. It better separates luminance from chrominance than RGB for efficient similarity search in image databases.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ ARTIFACTS ══════════════════════════════════ -->
+<section class="section" id="artifacts">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2 class="section-title">Digitization Artifacts</h2>
+    <span class="importance-pill badge badge-red">80% · Part A — Very Commonly Asked</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ Pixelization</h3>
+    <p><span class="highlight">Pixelization</span> occurs when spatial sampling is insufficient — the image does not have enough pixels to represent fine details. Individual pixels become visible as colored squares.</p>
+    <p><strong>Visual effects of pixelization:</strong></p>
+    <ul>
+      <li>Curved edges appear as staircase (jagged) patterns</li>
+      <li>Fine details like text, thin lines, or small objects disappear</li>
+      <li>Image appears "blocky" when displayed at larger size</li>
+      <li>High-frequency content (edges) is aliased as lower-frequency patterns</li>
+    </ul>
+    <p><strong>Prevention:</strong> Use higher spatial resolution (more pixels). Anti-aliasing: pre-filter to remove high frequencies before reducing resolution.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐⭐ False Contouring (Quantization Contouring)</h3>
+    <p><span class="highlight">False contouring</span> (also called quantization contouring or banding) occurs when insufficient gray levels create visible boundaries in what should be smooth tonal transitions.</p>
+    <p><strong>Why it looks like contours:</strong> In a smooth gradient (e.g., sky from light to dark blue), the continuous intensity changes gradually. With only a few gray levels, many adjacent pixels that should have slightly different intensities all get mapped to the same level. At the boundary between levels, there is a sudden jump — creating an artificial "edge" or "contour line."</p>
+    <p><strong>Most visible in:</strong> Smooth gradients, human faces, skies, out-of-focus backgrounds — anywhere intensity changes slowly.</p>
+    <p><strong>Prevention:</strong> Use more bits (higher k). Dithering: add controlled noise before quantization to break up the banding pattern.</p>
+
+    <div class="tip-box trick">
+      <div class="tip-icon">⚡</div>
+      <div class="tip-content">
+        <div class="tip-title">Exam Comparison — 2 marks "Pixelization vs False Contouring"</div>
+        <p><strong>Pixelization:</strong> Due to LOW SAMPLING (not enough pixels). Affects spatial detail. Cure: increase M×N.<br>
+        <strong>False Contouring:</strong> Due to LOW QUANTIZATION (not enough bits). Affects tonal smoothness. Cure: increase k (bit depth).<br>
+        Simple trick to remember: <strong>P</strong>ixelization = <strong>P</strong>ixel count (spatial). <strong>F</strong>alse contouring = <strong>F</strong>ew levels (intensity).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐⭐ Aliasing</h3>
+    <p><span class="highlight">Aliasing</span> is the distortion that occurs when the sampling rate is below the Nyquist rate. High-frequency patterns in the original image "masquerade" as lower-frequency patterns in the sampled image.</p>
+
+    <div class="example-box">
+      <div class="example-label">📌 Classic Aliasing Example</div>
+      <p><strong>Moiré Pattern:</strong> When imaging a fabric with fine diagonal stripes at too low a resolution, the sampling misses the true pattern frequency, and instead a larger-scale moiré pattern (interference pattern) appears in the image — it's an aliasing artifact.</p>
+      <p><strong>Wagon wheel effect (in video):</strong> A wagon wheel spinning fast appears to spin backwards in video — because the sampling rate (frame rate) is below 2× the wheel's rotation frequency.</p>
+    </div>
+
+    <p><strong>Solution — Anti-Aliasing:</strong> Apply a low-pass filter to the image BEFORE sampling. This removes frequencies above Nyquist (f_max = f_s/2), preventing them from folding back into lower frequencies. This is called pre-filtering or anti-aliasing.</p>
+  </div>
+
+  <div class="theory-block">
+    <h3>⭐ Quantization Noise</h3>
+    <p>Every quantized pixel has a small error = true value − quantized level. This error is called <span class="highlight">quantization noise</span> or quantization error.</p>
+    <div class="formula-box">
+      <span class="label">Quantization Error</span>
+      <div class="formula">e(x,y) = f(x,y) − Q[f(x,y)]</div>
+      <div class="note">Q[·] = quantization operator. Maximum error = ±Δ/2 where Δ = step size = L_max / (2ᵏ − 1).</div>
+      <div class="note">With uniform quantization and many levels (large k), e(x,y) is approximately uniformly distributed in [−Δ/2, +Δ/2] — treated as additive uniform noise.</div>
+    </div>
+    <p>This quantization noise is why even perfect (noiseless) image capture still introduces some error. It's why medical images use 12-bit (4096 levels) rather than 8-bit — to reduce quantization error to clinically acceptable levels.</p>
+  </div>
+
+  <div class="pyq-section">
+    <div class="pyq-header">📝 RTU PYQs — Artifacts</div>
+    <div class="pyq-item">
+      <div class="pyq-q">Q. Define pixelization and false contouring effect in images.</div>
+      <div class="pyq-meta">June 2023 · Part A Q1 · 2 marks ⭐ Full definitions in theory section above</div>
+      <button class="pyq-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Answer':'▼ Show Answer'">▼ Show Answer</button>
+      <div class="answer-content">
+        <div style="font-size:14px;line-height:1.8">
+          <strong>Pixelization:</strong><br>
+          Visual artifact from insufficient spatial sampling (low M×N). When an image has too few pixels for the displayed size, individual square pixel blocks become visible. Curved boundaries appear as staircase patterns. Fine spatial details disappear. Caused by sampling rate falling below Nyquist frequency.<br>
+          <em>Example:</em> A 64×64 image displayed at 512×512 size — clearly visible pixel blocks.<br><br>
+
+          <strong>False Contouring (Quantization Contouring):</strong><br>
+          Visual artifact from insufficient gray-level quantization (low k/bits). Smooth tonal gradients display as abrupt step-like transitions, creating artificial contour lines where none exist in the original scene. Each "band" corresponds to one quantization level. Most visible in smooth, slowly-varying regions.<br>
+          <em>Example:</em> A blue sky gradient quantized with only 4 bits (16 levels) — visible horizontal bands of slightly different blues appear.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ PYQ MASTER ══════════════════════════════════ -->
+<section class="section" id="pyq-master">
+  <div class="section-header">
+    <span class="section-num">✦</span>
+    <h2 class="section-title">All RTU PYQs — Master List</h2>
+    <span class="importance-pill badge badge-red">Complete Reference</span>
+  </div>
+
+  <div class="theory-block">
+    <h3>Part A Questions (2 marks) — Unit 2</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2025</td><td>What are the types of image enhancement available?</td><td>Steps in DIP</td></tr>
+      <tr><td>2024</td><td>How are color images represented digitally?</td><td>Color Representation ⭐</td></tr>
+      <tr><td>2023</td><td>Define pixelization and false contouring effect in images.</td><td>Artifacts ⭐⭐</td></tr>
+      <tr><td>2022</td><td>Define Histogram? What are the gray level transformation functions of an image?</td><td>Image Basics / Unit 3</td></tr>
+      <tr><td>2022</td><td>What do you mean by image registration?</td><td>Acquisition</td></tr>
+    </table>
+
+    <h3 style="margin-top:20px">Part B Questions (4 marks) — Unit 2</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2024</td><td>Explain what you would expect the result of Sampling and Quantization operations on image.</td><td>Sampling & Quantization ⭐⭐</td></tr>
+      <tr><td>2022</td><td>Explain Image sensing and acquisition with suitable diagram.</td><td>Image Acquisition ⭐⭐</td></tr>
+    </table>
+
+    <h3 style="margin-top:20px">Part C Questions (10 marks) — Unit 2 (Cross-Unit)</h3>
+    <table class="comp-table">
+      <tr><th>Year</th><th>Question</th><th>Topic</th></tr>
+      <tr><td>2023</td><td>Explain image formation model. Discuss the different types of sensors used to acquire images digitally with suitable examples and illustrative diagrams.</td><td>Acquisition + Sensors ⭐⭐</td></tr>
+      <tr><td>2025</td><td>Explain following: LUT, Additive vs Subtractive color, Hue and Saturation, HMMD Color Space.</td><td>Color Models ⭐</td></tr>
+    </table>
+  </div>
+
+  <div class="tip-box trick">
+    <div class="tip-icon">🏆</div>
+    <div class="tip-content">
+      <div class="tip-title">Top 5 Must-Prepare Topics — Unit 2</div>
+      <p>
+        <strong>1.</strong> Pixelization vs False Contouring — definitions + causes + prevention (appears EVERY year)<br>
+        <strong>2.</strong> Sampling & Quantization effects — draw the effect table + effects at different resolutions<br>
+        <strong>3.</strong> Image Acquisition — full block diagram (illumination → lens → CCD/CMOS → A/D → digital)<br>
+        <strong>4.</strong> Digital Image representation — f(x,y), M×N, bit depth, storage formula M×N×k bits<br>
+        <strong>5.</strong> Color models comparison — RGB (additive), CMY (subtractive), HSI (perception-based)
+      </p>
+    </div>
+  </div>
+
+  <div class="tip-box validate">
+    <div class="tip-icon">📋</div>
+    <div class="tip-content">
+      <div class="tip-title">Cross-Unit Connections to Always Mention</div>
+      <p>
+        <strong>Unit 2 → Unit 3:</strong> Sampling & Quantization → Bit-plane slicing (Unit 3 intensity transforms). Histogram of gray levels (Unit 3) comes from quantization.<br>
+        <strong>Unit 2 → Unit 4:</strong> Sensor noise types (CCD thermal → Gaussian noise, CMOS stuck pixels → Salt & Pepper) directly determine which noise filter (Unit 4) to use.<br>
+        <strong>Unit 2 → Unit 5:</strong> Image storage formula M×N×k bits is EXACTLY what compression (Unit 5) tries to reduce. Redundancy in quantized values enables Huffman coding.<br>
+        <strong>Unit 2 → Unit 6:</strong> Pixel connectivity (4-connected, 8-connected) from digital image representation is directly used in region growing (Unit 6).
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<button class="sidebar-toggle" id="burgerBtn" onclick="openSidebar()">☰</button>
+
+<script>
+  function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('overlay').classList.add('visible');
+    document.getElementById('burgerBtn').classList.add('open');
+    document.getElementById('burgerBtn').textContent = '✕';
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('visible');
+    document.getElementById('burgerBtn').classList.remove('open');
+    document.getElementById('burgerBtn').textContent = '☰';
+    document.body.style.overflow = '';
+  }
+  const sections = document.querySelectorAll('.section');
+  const navItems = document.querySelectorAll('.nav-item');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => { if (window.scrollY >= s.offsetTop - 100) current = s.id; });
+    navItems.forEach(n => {
+      n.classList.remove('active');
+      if (n.getAttribute('href') === '#' + current) n.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
